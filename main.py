@@ -1,5 +1,6 @@
 from sklearn.model_selection import train_test_split
 import numpy as np
+import pandas as pd
 
 
 # TODO: raise errors instead?
@@ -31,12 +32,17 @@ def zero_model():
 
 x = np.random.rand(5, 3)
 
+df = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/flights.csv')
+# convert months to numbers since our pipeline requires number only
+month_map = {"January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6, "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12}
+df["month"] = df["month"].map(month_map)
+
 # train-test split 80/20; not shuffled because time series
-train, test = train_test_split(x, test_size=0.2, shuffle=False)
+train, test = train_test_split(df.to_numpy(), test_size=0.2, shuffle=False)
 
 # perform quality check of the data
-assert quality_check(x), "There are issues with the data: string or nan values"
+assert quality_check(train), "There are issues with the data: string or nan values"
 
 # create the baseline zero model
 zm = zero_model()
-print("Prediction: ", zm(x))
+print("Prediction: ", zm(train))

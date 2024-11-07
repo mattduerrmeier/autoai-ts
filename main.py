@@ -4,6 +4,7 @@ import pandas as pd
 
 
 # TODO: raise errors instead?
+# Check for negative value
 def quality_check(x):
     """
     Verifies that the data has no nan values and on strings.
@@ -28,6 +29,44 @@ def zero_model():
     This model always predicts the most recent value of the time serie.
     """
     return lambda x: x[-1]
+
+def get_look_back_window_length(x, col_idx=0):
+    """
+    Computes the look back window length for the input dataset.
+    By default, it is assumed that the timestamp is the first column of the 2D array.
+    """
+    # TODO: implement timestamp based assessment with temporal frequency
+
+    # value index assessment
+    # 1. zero-crossing
+    value_col = x[:, -1]
+    value_col -= np.mean(value_col);
+
+    # the bit sign is an array of booleans; do a diff (x[i+1] - x[i]) and find indices of true
+    zero_crossing_idxs = np.nonzero(np.diff(np.signbit(value_col)))[0]
+    zero_crossing_mean = np.mean(zero_crossing_idxs)
+
+    # TODO: 2. spectral analysis
+
+    # select look-back window
+    looks_backs = [candidate for candidate in [zero_crossing_mean] if candidate > len(x)]
+
+    look_back = 0
+
+    if len(look_backs) > 1:
+        # which look back to keep?
+        look_back = select_look_back(look_backs)
+    elif len(look_backs) == 1:
+        look_back = look_backs[0]
+    else:
+        look_back = 8 # default value
+
+    return look_back
+
+
+def select_look_back(look_backs):
+    # TODO: implement the look back selection as described in the paper
+    return look_backs[0]
 
 
 x = np.random.rand(5, 3)

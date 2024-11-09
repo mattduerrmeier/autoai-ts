@@ -1,11 +1,13 @@
+from typing import Callable, TypeVar, Any
 from sklearn.model_selection import train_test_split
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
 # TODO: raise errors instead?
 # Check for negative value
-def quality_check(x):
+def quality_check(x: npt.NDArray) -> bool:
     """
     Verifies that the data has no nan values and on strings.
     Return False if there are issues with the data.
@@ -23,14 +25,14 @@ def quality_check(x):
 
     return True
 
-def zero_model():
+def zero_model() -> Callable[[npt.NDArray], npt.DTypeLike]:
     """
     Returns the zero model, used as baseline by AutoAI-TS.
     This model always predicts the most recent value of the time serie.
     """
     return lambda x: x[-1]
 
-def get_look_back_window_length(x, col_idx=0):
+def get_look_back_window_length(x: npt.NDArray, col_idx: int=0):
     """
     Computes the look back window length for the input dataset.
     By default, it is assumed that the timestamp is the first column of the 2D array.
@@ -44,14 +46,14 @@ def get_look_back_window_length(x, col_idx=0):
 
     # the bit sign is an array of booleans; do a diff (x[i+1] - x[i]) and find indices of true
     zero_crossing_idxs = np.nonzero(np.diff(np.signbit(value_col)))[0]
-    zero_crossing_mean = np.mean(zero_crossing_idxs)
+    zero_crossing_mean = float(np.mean(zero_crossing_idxs))
 
     # TODO: 2. spectral analysis
 
     # select look-back window
-    looks_backs = [candidate for candidate in [zero_crossing_mean] if candidate > len(x)]
+    look_backs: list[float] = [candidate for candidate in [zero_crossing_mean] if candidate > len(x)]
 
-    look_back = 0
+    look_back = 0.0
 
     if len(look_backs) > 1:
         # which look back to keep?
@@ -64,7 +66,7 @@ def get_look_back_window_length(x, col_idx=0):
     return look_back
 
 
-def select_look_back(look_backs):
+def select_look_back(look_backs: list[float]) -> float:
     # TODO: implement the look back selection as described in the paper
     return look_backs[0]
 

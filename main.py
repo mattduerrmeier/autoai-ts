@@ -2,10 +2,9 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 from data_check import quality_check, negative_value_check
-from pipeline import zero_model, create_pipelines
+from pipeline import create_pipelines
 from model import Model
 
-x = np.random.rand(5, 3)
 
 df = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/flights.csv')
 # convert months to numbers since our pipeline requires number only
@@ -20,9 +19,5 @@ quality = quality_check(train)
 assert quality, "There are issues with the data: string or nan values"
 
 log_transform = negative_value_check(train)
-
-# create the baseline zero model
-zm = zero_model()
-print("Prediction: ", zm(train))
 
 pipelines: list[Model] = create_pipelines()

@@ -28,7 +28,7 @@ def negative_value_check(x: npt.NDArray) -> bool:
     return bool((x < 0).any())
 
 
-def get_look_back_window_length(x: npt.NDArray, col_idx: int=0):
+def get_look_back_window_length(x: npt.NDArray, timestamp_column: int=0):
     """
     Computes the look back window length for the input dataset.
     By default, it is assumed that the timestamp is the first column of the 2D array.

@@ -1,3 +1,5 @@
+from scipy.signal import find_peaks
+import pandas as pd
 import numpy.typing as npt
 import numpy as np
 
@@ -28,12 +30,12 @@ def negative_value_check(x: npt.NDArray) -> bool:
     return bool((x < 0).any())
 
 
-def get_look_back_window_length(x: npt.NDArray, timestamp_column: int=0):
+def compute_look_back_window(x: npt.NDArray, timestamp_column: int=0) -> float:
     """
     Computes the look back window length for the input dataset.
     By default, it is assumed that the timestamp is the first column of the 2D array.
     """
-    # TODO: implement timestamp based assessment with temporal frequency
+    timestamps_candidates = _timestamp_analysis(x[0])
 
     # value index assessment
     # 1. zero-crossing
@@ -45,12 +47,17 @@ def get_look_back_window_length(x: npt.NDArray, timestamp_column: int=0):
     zero_crossing_mean = float(np.mean(zero_crossing_idxs))
 
     # TODO: 2. spectral analysis
+    spectral_analysis_candidates = _spectral_analysis(x)
 
     # select look-back window
-    look_backs: list[float] = [candidate for candidate in [zero_crossing_mean] if candidate > len(x)]
+    look_backs: list[float] = [
+        candidate
+        for candidates in [timestamps_candidates, zero_crossing_mean, spectral_analysis_candidates]
+        for candidate in candidates
+        if candidate < len(x)
+    ]
 
     look_back = 0.0
-
     if len(look_backs) > 1:
         # which look back to keep?
         look_back = select_look_back(look_backs)
@@ -60,6 +67,36 @@ def get_look_back_window_length(x: npt.NDArray, timestamp_column: int=0):
         look_back = 8 # default value
 
     return look_back
+
+
+def _timestamp_analysis(timestamps: npt.NDArray) -> list[float]:
+    frequency = pd.infer_freq(timestamps)
+
+    possible_seasonal_periods: list[float]
+    if frequency is None:
+        possible_seasonal_periods = []
+    elif frequency == "min":
+        possible_seasonal_periods = [1, 60]
+    elif frequency == "h":
+        possible_seasonal_periods = [1, 60, 3600]
+    elif frequency == "D":
+        possible_seasonal_periods = [1, 24, 1440, 86400]
+    elif frequency == "W":
+        possible_seasonal_periods = [1, 7, 168, 10080, 604800]
+    elif frequency[0] == "M": # MS or MY (month start or month end)
+        possible_seasonal_periods = [1, 4, 30, 720, 43200, 2592000]
+    elif frequency[0] == "Y": # YS or YE (year start / year end)
+        possible_seasonal_periods = [1, 12, 52, 365.25, 8766, 525960, 31557600]
+
+    return possible_seasonal_periods
+
+def _spectral_analysis(values :npt.NDArray) -> list[float]:
+    # https://numpy.org/doc/stable/reference/generated/numpy.fft.fftfreq.html#numpy.fft.fftfreq
+    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html#find-peaks
+
+    fft_magnitude = np.abs(np.fft.fft(values)) # this should be y I think?
+    peaks, _ = find_peaks(fft_magnitude)
+    return peaks
 
 
 def select_look_back(look_backs: list[float]) -> float:

@@ -26,6 +26,10 @@ def quality_check(x: npt.NDArray) -> bool:
 
 
 def negative_value_check(x: npt.NDArray) -> bool:
+    """
+    Check for negatives values in the input array.
+    Return true if there are negative values, false otherwise.
+    """
     # log transformation are impossible on negative values
     return bool((x < 0).any())
 

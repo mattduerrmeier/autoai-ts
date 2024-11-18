@@ -12,7 +12,7 @@ import numpy.typing as npt
 from model import Model
 from typing import Callable
 
-def create_pipelines() -> list[Model]:
+def create_pipelines(log_transform: bool) -> list[Model]:
     # Zero Model
     zm = ZeroModel()
 
@@ -27,11 +27,14 @@ def create_pipelines() -> list[Model]:
     rfr = RandomForestRegressor()
     xgb = XGBRegressor()
     # AutoEnsembler: are these variations of XGBoost?
+    model_list = [zm, arima, svr, rfr, xgb]
 
     # Transformers: do we use it?
-    log_transformer = FunctionTransformer(np.log, validate=True)
+    if log_transform == False:
+        log_transformer = FunctionTransformer(np.log, validate=True)
+        model_list.append(log_transformer)
 
-    return [zm, arima, svr, rfr, xgb]
+    return model_list
 
 
 class SMWrapper(Model):

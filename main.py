@@ -10,6 +10,9 @@ df = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/
 # convert months to numbers since our pipeline requires number only
 month_map = {"January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6, "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12}
 df["month"] = df["month"].map(month_map)
+# we need a day for the to_datetime function
+df["day"] = 1
+df["date"] = pd.to_datetime(df[["year", "month", "day"]])
 
 # train-test split 80/20; not shuffled because time series
 train, test = train_test_split(df.to_numpy(), test_size=0.2, shuffle=False)
@@ -20,4 +23,4 @@ assert quality, "There are issues with the data: string or nan values"
 
 log_transform = negative_value_check(train)
 
-pipelines: list[Model] = create_pipelines()
+pipelines: list[Model] = create_pipelines(log_transform)

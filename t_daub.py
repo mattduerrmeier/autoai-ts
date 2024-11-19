@@ -47,8 +47,8 @@ def t_daub_algorithm(pipelines: list[Model],
     for i in range(num_fix_runs):
         for p_idx, p in enumerate(pipelines):
             p.fit(
-                X_train[L - min_allocation_size*i:L],
-                y_train[L - min_allocation_size*i:L],
+                X_train[L - (min_allocation_size+1)*i:L],
+                y_train[L - (min_allocation_size+1)*i:L],
             )
 
             score = p.score(X_test, y_test)
@@ -56,12 +56,12 @@ def t_daub_algorithm(pipelines: list[Model],
 
 
     for p_idx, p in enumerate(pipelines):
-        X_score = pipeline_scores[p_idx]
-        y_score = [*range(len(X))]
+        y_score = pipeline_scores[p_idx]
+        X_score = np.array(0, len(y_score)).reshape(-1, 1)
 
         reg = LinearRegression().fit(X_score, y_score)
-        future_pipeline_scores = X_score[-1] + 1
-        score_preds = reg.predict(future_pipeline_scores)
+        future_pipeline_score = np.array([X_score[-1]+1])
+        score_preds = reg.predict(future_pipeline_score)
 
         pipeline_scores[p_idx].append(score_preds)
 
@@ -73,7 +73,7 @@ def t_daub_algorithm(pipelines: list[Model],
     l = L - min_allocation_size * num_fix_runs
     last_allocation_size = 0 #TODO: what value for this?
 
-    next_allocation = int(last_allocation_size * geo_increment_size * allocation_size ** (-1)) * allocation_size
+    next_allocation = int(last_allocation_size * geo_increment_size * allocation_size**(-1)) * allocation_size
     l = l + next_allocation
     while l < L:
         top_p_idx = pipeline_scores_sorted[0][0]
@@ -97,7 +97,6 @@ def t_daub_algorithm(pipelines: list[Model],
     top_pipelines: list[Model] = [pipelines[p_idx] for p_idx, _ in pipeline_scores_sorted[0:run_to_completion]]
 
     top_scores: list[float] = []
-
     for top_p in top_pipelines:
         top_p.fit(X_train, y_train)
         score = top_p.score(X_test, y_test)

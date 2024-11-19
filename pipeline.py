@@ -12,7 +12,7 @@ import numpy.typing as npt
 from model import Model
 from typing import Callable
 
-def create_pipelines(log_transform: bool) -> list[Model]:
+def create_pipelines(log_transform: bool=True) -> list[Model]:
     # Zero Model
     zm = ZeroModel()
 

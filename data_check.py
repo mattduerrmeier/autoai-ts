@@ -28,27 +28,34 @@ def quality_check(x: npt.NDArray) -> bool:
 def negative_value_check(x: npt.NDArray) -> bool:
     """
     Check for negatives values in the input array.
+    Log transformation are impossible on negative values.
     Return true if there are negative values, false otherwise.
     """
-    # log transformation are impossible on negative values
     return bool((x < 0).any())
 
 
-def compute_look_back_window(x: npt.NDArray, timestamp_column: int=0,
+def compute_look_back_window(x: npt.NDArray,
+                             timestamps: npt.NDArray | None=None,
+                             timestamp_column_idx: int | None=None,
                              max_look_back: int | None=None
                              ) -> int:
     """
     Computes the look back window length for the input dataset.
     By default, it is assumed that the timestamp is the first column of the 2D array.
     """
+    if timestamps is None:
+        if timestamp_column_idx is None:
+            timestamps = x[:, 0]
+        else:
+            timestamps = x[:, timestamp_column_idx]
+
     ### Timestamps assessment
-    timestamps = x[:, timestamp_column]
     timestamps_candidates = _timestamp_analysis(timestamps)
 
     ### value index assessment
     # 1. zero-crossing
-    value_col = x[:, 1].astype(float)
-    value_col -= np.mean(value_col)
+    value_col = x.flatten().copy()
+    value_col = value_col - np.mean(value_col)
 
     # the bit sign is an array of booleans; do a diff (x[i+1] - x[i]) and find indices of true
     zero_crossing_idxs = np.nonzero(np.diff(np.signbit(value_col)))[0]
@@ -69,7 +76,7 @@ def compute_look_back_window(x: npt.NDArray, timestamp_column: int=0,
     return look_back
 
 
-def _timestamp_analysis(timestamps: npt.NDArray) -> list[int]:
+def _timestamp_analysis(timestamps: npt.NDArray[np.datetime64]) -> list[int]:
     frequency = pd.infer_freq(timestamps)
 
     possible_seasonal_periods: list[int]
@@ -127,7 +134,3 @@ def _select_look_back(look_backs: list[int],
         look_back = 8
 
     return look_back
-
-def to_supervised(X: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
-    y = X[1:, 1]
-    return X[:-1, 1].reshape(-1, 1), y

@@ -4,7 +4,7 @@ import numpy as np
 from data_check import quality_check, negative_value_check, compute_look_back_window, to_supervised
 from pipeline import create_pipelines
 from model import Model
-
+from t_daub import t_daub_algorithm
 
 df = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/flights.csv')
 # convert months to numbers since our pipeline requires number only
@@ -25,7 +25,12 @@ quality = quality_check(train["passengers"].to_numpy())
 assert quality, "There are issues with the data: string or nan values"
 
 look_back = compute_look_back_window(train.to_numpy())
-print(look_back)
 
 pipelines: list[Model] = create_pipelines()
 X, y = to_supervised(train.to_numpy())
+X = X.astype(float)
+y = y.astype(float)
+
+top_pipelines = t_daub_algorithm(pipelines, X, y, min_allocation_size=8, allocation_size=8, geo_increment_size=2)
+
+print(top_pipelines)

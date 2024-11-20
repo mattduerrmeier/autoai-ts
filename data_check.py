@@ -60,9 +60,11 @@ def compute_look_back_window(x: npt.NDArray, timestamp_column: int=0,
     # flatten the list of lists
     look_backs: list[int] = [
         candidate
-        for candidates in [timestamps_candidates, [zero_crossing_mean], spectral_analysis_candidates]
+        for candidates in [timestamps_candidates, spectral_analysis_candidates]
         for candidate in candidates
     ]
+    look_backs.append(zero_crossing_mean)
+
     look_back = _select_look_back(look_backs, len(x), max_look_back)
     return look_back
 
@@ -88,7 +90,7 @@ def _timestamp_analysis(timestamps: npt.NDArray) -> list[int]:
 
     return possible_seasonal_periods
 
-def _spectral_analysis(values :npt.NDArray) -> list[float]:
+def _spectral_analysis(values :npt.NDArray) -> list[int]:
     # https://numpy.org/doc/stable/reference/generated/numpy.fft.fftfreq.html#numpy.fft.fftfreq
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html#find-peaks
 
@@ -127,5 +129,5 @@ def _select_look_back(look_backs: list[int],
     return look_back
 
 def to_supervised(X: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
-    y = X[1:]
-    return X[:-1], y
+    y = X[1:, 1]
+    return X[:-1, 1].reshape(-1, 1), y

@@ -28,7 +28,7 @@ def t_daub_algorithm(pipelines: list[Model],
                      X: npt.NDArray, y: npt.NDArray,
                      min_allocation_size: int,
                      allocation_size: int, # TODO: default value for allocation size?
-                     geo_increment_size: int,
+                     geo_increment_size: int=2,
                      fixed_allocation_cutoff: int | None = None,
                      run_to_completion: int = 3,
                      test_size: float = 0.2
@@ -47,8 +47,8 @@ def t_daub_algorithm(pipelines: list[Model],
     for i in range(num_fix_runs):
         for p_idx, p in enumerate(pipelines):
             p.fit(
-                X_train[L - (min_allocation_size+1)*i:L],
-                y_train[L - (min_allocation_size+1)*i:L],
+                X_train[L - min_allocation_size*(i+1):L],
+                y_train[L - min_allocation_size*(i+1):L],
             )
 
             score = p.score(X_test, y_test)
@@ -57,13 +57,13 @@ def t_daub_algorithm(pipelines: list[Model],
 
     for p_idx, p in enumerate(pipelines):
         y_score = pipeline_scores[p_idx]
-        X_score = np.array(0, len(y_score)).reshape(-1, 1)
+        X_score = np.arange(0, len(y_score)).reshape(-1, 1)
 
         reg = LinearRegression().fit(X_score, y_score)
         future_pipeline_score = np.array([X_score[-1]+1])
         score_preds = reg.predict(future_pipeline_score)
 
-        pipeline_scores[p_idx].append(score_preds)
+        pipeline_scores[p_idx].append(score_preds.item())
 
 
     # sort the pipelines based on their average score
@@ -71,7 +71,7 @@ def t_daub_algorithm(pipelines: list[Model],
 
     ### 2. Allocation acceleration
     l = L - min_allocation_size * num_fix_runs
-    last_allocation_size = 0 #TODO: what value for this?
+    last_allocation_size = num_fix_runs * min_allocation_size
 
     next_allocation = int(last_allocation_size * geo_increment_size * allocation_size**(-1)) * allocation_size
     l = l + next_allocation

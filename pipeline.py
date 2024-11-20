@@ -13,11 +13,16 @@ from model import Model
 from typing import Callable
 
 def create_pipelines(log_transform: bool=True) -> list[Model]:
+    """
+    Initialize the model pipelines.
+    Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
+    """
     # Zero Model
     zm = ZeroModel()
 
     # Stat Models
-    # bats = None # TODO: what to use for BATS?
+    # # TODO: what to use for BATS? Exponential Smoothin parameters?
+    # bats = None
     arima = SMWrapper(ARIMA)
     hw_add = SMWrapper(ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4})
     hw_mult = SMWrapper(ExponentialSmoothing, **{"seasonal": "Multiplicative", "seasonal_periods": 4})
@@ -25,11 +30,11 @@ def create_pipelines(log_transform: bool=True) -> list[Model]:
     # ML Models
     svr = SVR()
     rfr = RandomForestRegressor()
+    # AutoEnsembler: use XGBoost
     xgb = XGBRegressor()
-    # AutoEnsembler: are these variations of XGBoost?
-    model_list = [zm, arima, svr, rfr, xgb]
+    model_list = [zm, arima, hw_add, hw_mult, svr, rfr, xgb]
 
-    # Transformers: do we use it?
+    # include other transformers as well
     if log_transform == False:
         log_transformer = FunctionTransformer(np.log, validate=True)
         model_list.append(log_transformer)
@@ -40,14 +45,14 @@ def create_pipelines(log_transform: bool=True) -> list[Model]:
 class SMWrapper(Model):
     """
     A Wrapper for statsmodels regressor with true scikit-learn API.
-    Required because statsmodel needs the data to initialize the model, but we want this to happen when we call fit.
+    Required because statsmodel needs the data to initialize the model, but we want this to happen when we call fit instead.
     """
     def __init__(self, model_class, **kwargs):
         self.model_class = model_class
         self.kwargs = kwargs
 
     def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'SMWrapper':
-        m = self.model_class(y, **self.kwargs)
+        m = self.model_class(X, **self.kwargs)
         self.model = m.fit()
         return self
 
@@ -69,7 +74,7 @@ class ZeroModel(Model):
         self.pred: float = 0.
 
     def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'ZeroModel':
-        self.pred = X[-1, -1].item()
+        self.pred = X[-1, -1]
         return self
 
     def predict(self, X: npt.NDArray) -> npt.NDArray:

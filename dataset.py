@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import numpy.typing as npt
 
 def get_flights_dataset() -> pd.DataFrame:
@@ -22,6 +23,13 @@ def get_flights_dataset() -> pd.DataFrame:
 
     df = df.set_index("date")
     return df
+
+
+def get_cosine_function(freq=0.01, time=2000) -> npt.NDArray:
+    t = np.arange(0, time)
+    amp = np.linspace(0, 1, t.size)
+    return amp * np.sin(2*np.pi * freq * t + np.pi/2)
+
 
 def to_supervised(X: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
     y = X[1:].reshape(X.size-1)

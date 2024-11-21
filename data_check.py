@@ -62,15 +62,10 @@ def compute_look_back_window(x: npt.NDArray,
     zero_crossing_mean = int(np.mean(zero_crossing_idxs))
 
     # 2. spectral analysis
-    spectral_analysis_candidates = _spectral_analysis(value_col)
+    spectral_analysis_candidate = _spectral_analysis(value_col)
 
     # flatten the list of lists
-    look_backs: list[int] = [
-        candidate
-        for candidates in [timestamps_candidates, spectral_analysis_candidates]
-        for candidate in candidates
-    ]
-    look_backs.append(zero_crossing_mean)
+    look_backs: list[int] = timestamps_candidates + [zero_crossing_mean, spectral_analysis_candidate]
 
     look_back = _select_look_back(look_backs, len(x), max_look_back)
     return look_back
@@ -97,14 +92,12 @@ def _timestamp_analysis(timestamps: npt.NDArray[np.datetime64]) -> list[int]:
 
     return possible_seasonal_periods
 
-def _spectral_analysis(values :npt.NDArray) -> list[int]:
-    # https://numpy.org/doc/stable/reference/generated/numpy.fft.fftfreq.html#numpy.fft.fftfreq
-    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html#find-peaks
-
-    # TODO: what's the frequency of the data for the find peaks and fft?
-    fft_magnitude = np.abs(np.fft.fft(values)) # this should be y I think?
-    peaks, _ = find_peaks(fft_magnitude)
-    return peaks
+def _spectral_analysis(values :npt.NDArray) -> int:
+    # transform to the frequency domain
+    fft = np.fft.fft(values)
+    # find the peak in this domain
+    peak = int(np.argmax(fft))
+    return peak
 
 
 def _select_look_back(look_backs: list[int],
@@ -124,9 +117,9 @@ def _select_look_back(look_backs: list[int],
 
     look_back: int
     if len(look_backs) > 1:
-        # TODO: influence vector: how can to implement this?
-        # for now, we use the mean value
-        look_back = int(np.mean(look_backs))
+        # influence vector: how can to implement this?
+        # for now, we use the median value
+        look_back = int(np.median(look_backs))
     elif len(look_backs) == 1:
         look_back = look_backs[0]
     else:

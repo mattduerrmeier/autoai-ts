@@ -10,8 +10,15 @@ passengers = df["passengers"]
 avg = passengers - passengers.mean()
 fft = np.fft.fft(avg)
 
-timestep = 1 # because we have datapoint every month
+abs_fft = np.abs(fft)
+timestep = 1 # 1 datapoint per month
 fft_freq = np.fft.fftfreq(passengers.size, d=timestep)
 
-plt.plot(2* np.abs(fft_freq), np.abs(fft))
-plt.show()
+# plt.plot(2*np.abs(fft_freq), abs_fft)
+# peaks, _ = find_peaks(abs_fft)
+# lt.plot(2*np.abs(fft_freq)[peaks], abs_fft[peaks], "x")
+# plt.show()
+
+# plt.plot(range(len(avg)), avg)
+# plt.axvline(24)
+# plt.show()

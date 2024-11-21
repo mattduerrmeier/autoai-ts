@@ -12,7 +12,7 @@ import numpy.typing as npt
 from model import Model
 from typing import Callable
 
-def create_pipelines(log_transform: bool=True) -> list[Model]:
+def create_pipelines(contains_neg_values: bool=True) -> list[Model]:
     """
     Initialize the model pipelines.
     Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
@@ -25,19 +25,22 @@ def create_pipelines(log_transform: bool=True) -> list[Model]:
     # bats = None
     arima = SMWrapper(ARIMA)
     hw_add = SMWrapper(ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4})
-    hw_mult = SMWrapper(ExponentialSmoothing, **{"seasonal": "Multiplicative", "seasonal_periods": 4})
 
     # ML Models
     svr = SVR()
     rfr = RandomForestRegressor()
     # AutoEnsembler: use XGBoost
     xgb = XGBRegressor()
-    model_list = [zm, arima, hw_add, hw_mult, svr, rfr, xgb]
+    model_list = [zm, arima, hw_add, svr, rfr, xgb]
 
-    # include other transformers as well
-    if log_transform == False:
-        log_transformer = FunctionTransformer(np.log, validate=True)
-        model_list.append(log_transformer)
+    # include models that work with negative
+    if contains_neg_values == False:
+        hw_mult = SMWrapper(ExponentialSmoothing, **{"seasonal": "Multiplicative", "seasonal_periods": 4})
+        model_list.append(hw_mult)
+
+        # this needs to be combined with another model: which one?
+        # log_transformer = FunctionTransformer(np.log, validate=True)
+        # model_list.append(log_transformer)
 
     return model_list
 

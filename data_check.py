@@ -4,25 +4,21 @@ import numpy.typing as npt
 import numpy as np
 
 
-# TODO: raise errors instead?
-def quality_check(x: npt.NDArray) -> bool:
+def quality_check(X: npt.NDArray) -> None:
     """
     Verifies that the data has no nan values and on strings.
-    Return False if there are issues with the data.
+    Raises an error if there are issues with the data.
     """
 
-    # input array should not contain strings
     status: bool = False
 
-    # string: return false
-    if x.dtype.type == np.object_:
-        return False
+    # input array should not contain strings
+    if X.dtype.type == np.object_:
+        raise TypeError("T-Daub cannot accept data with strings")
 
-    # no nan values
-    if np.isnan(np.sum(x)) == np.True_:
-        return False
-
-    return True
+    # input array should not contain nan values
+    if np.isnan(np.sum(X)) == np.True_:
+        raise TypeError("T-Daub cannot accept data with NaN values")
 
 
 def negative_value_check(x: npt.NDArray) -> bool:
@@ -41,16 +37,16 @@ def compute_look_back_window(x: npt.NDArray,
                              ) -> int:
     """
     Computes the look back window length for the input dataset.
-    By default, it is assumed that the timestamp is the first column of the 2D array.
+    Timestamps must be passed explicitly to be used.
+    Currently works only with univariate datasets.
     """
-    if timestamps is None:
-        if timestamp_column_idx is None:
-            timestamps = x[:, 0]
-        else:
-            timestamps = x[:, timestamp_column_idx]
+    look_backs: list[int] = []
 
     ### Timestamps assessment
-    timestamps_candidates = _timestamp_analysis(timestamps)
+    # We may skip this analysis in no timestamps are provided (synthetic datasets, for example)
+    if timestamps is not None:
+        timestamps_candidates: list[int] = _timestamp_analysis(timestamps)
+        look_backs = timestamps_candidates
 
     ### value index assessment
     # 1. zero-crossing
@@ -65,7 +61,7 @@ def compute_look_back_window(x: npt.NDArray,
     spectral_analysis_candidate = _spectral_analysis(value_col)
 
     # flatten the list of lists
-    look_backs: list[int] = timestamps_candidates + [zero_crossing_mean, spectral_analysis_candidate]
+    look_backs = look_backs + [zero_crossing_mean, spectral_analysis_candidate]
 
     look_back = _select_look_back(look_backs, len(x), max_look_back)
     return look_back

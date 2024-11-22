@@ -12,7 +12,7 @@ import numpy.typing as npt
 from model import Model
 from typing import Callable
 
-def create_pipelines(contains_neg_values: bool=True) -> list[Model]:
+def create_pipelines(contains_neg_values: bool=True, random_state: int=42) -> list[Model]:
     """
     Initialize the model pipelines.
     Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
@@ -28,9 +28,9 @@ def create_pipelines(contains_neg_values: bool=True) -> list[Model]:
 
     # ML Models
     svr = SVR()
-    rfr = RandomForestRegressor()
+    rfr = RandomForestRegressor(random_state=random_state)
     # AutoEnsembler: use XGBoost
-    xgb = XGBRegressor()
+    xgb = XGBRegressor(random_state=random_state)
     model_list = [zm, arima, hw_add, svr, rfr, xgb]
 
     # include models that work with negative

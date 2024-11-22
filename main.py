@@ -3,7 +3,7 @@ from pipeline import create_pipelines
 import data_check
 import dataset
 from model import Model
-from t_daub import t_daub_algorithm
+from t_daub import t_daub_algorithm, evaluate_performance
 
 arr = dataset.get_cosine_function()
 
@@ -21,8 +21,10 @@ pipelines: list[Model] = create_pipelines(contains_negative_value)
 X_train, y_train = dataset.to_supervised(train)
 
 top_pipelines = t_daub_algorithm(pipelines, X_train, y_train,
-                                 min_allocation_size=10,
-                                 allocation_size=8,
-                                 geo_increment_size=20)
+                                 allocation_size=100,
+                                 geo_increment_size=5)
 
 print(top_pipelines)
+
+X_test, y_test = dataset.to_supervised(test)
+print(evaluate_performance(top_pipelines, X_test, y_test))

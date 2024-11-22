@@ -1,3 +1,4 @@
+from metrics import smape
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 import numpy as np
@@ -26,7 +27,7 @@ class TDaub():
 
 def t_daub_algorithm(pipelines: list[Model],
                      X: npt.NDArray, y: npt.NDArray,
-                     min_allocation_size: int,
+                     # min_allocation_size: int,
                      allocation_size: int, # TODO: default value for allocation size?
                      geo_increment_size: int=2,
                      fixed_allocation_cutoff: int | None = None,
@@ -41,14 +42,14 @@ def t_daub_algorithm(pipelines: list[Model],
     L = len(X_train)
 
     ### 1. Fixed allocation: run on fixed size data
-    num_fix_runs = int(fixed_allocation_cutoff / min_allocation_size)
+    num_fix_runs = int(fixed_allocation_cutoff / allocation_size)
     pipeline_scores: dict[int, list[float]] = {p_idx: [] for p_idx, _ in enumerate(pipelines)}
 
     for i in range(num_fix_runs):
         for p_idx, p in enumerate(pipelines):
             p.fit(
-                X_train[L - min_allocation_size*(i+1):L],
-                y_train[L - min_allocation_size*(i+1):L],
+                X_train[L - allocation_size*(i+1):L],
+                y_train[L - allocation_size*(i+1):L],
             )
 
             score = p.score(X_test, y_test)
@@ -70,8 +71,8 @@ def t_daub_algorithm(pipelines: list[Model],
     pipeline_scores_sorted = sorted(pipeline_scores.items(), key=lambda x: float(np.mean(x[1])), reverse=True)
 
     ### 2. Allocation acceleration
-    l = L - min_allocation_size * num_fix_runs
-    last_allocation_size = num_fix_runs * min_allocation_size
+    l = L - allocation_size * num_fix_runs
+    last_allocation_size = num_fix_runs * allocation_size
 
     next_allocation = int(last_allocation_size * geo_increment_size * allocation_size**(-1)) * allocation_size
     l = l + next_allocation
@@ -104,3 +105,17 @@ def t_daub_algorithm(pipelines: list[Model],
 
     top_pipelines_sorted = [top_p for (top_p, _) in sorted(zip(top_pipelines, top_scores), key=lambda x: x[1], reverse=True)]
     return top_pipelines_sorted
+
+def evaluate_performance(pipelines: list[Model],
+                         X_test: npt.NDArray,
+                         y_test: npt.NDArray,
+                         evaluation_metric="smape"
+                         ) -> list[float]:
+
+    results: list[float] = []
+    for p in pipelines:
+        y_preds = p.predict(X_test)
+        score = smape(y_preds, y_test)
+        results.append(score)
+
+    return results

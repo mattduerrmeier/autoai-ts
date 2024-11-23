@@ -1,9 +1,9 @@
-from metrics import smape
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 import numpy as np
 from model import Model
 from typing import Callable
+import metrics
 import numpy.typing as npt
 
 class TDaub():
@@ -111,12 +111,12 @@ class TDaub():
         return pipeline_scores
 
 
-    def evaluate(self, X_test: npt.NDArray, y_test: npt.NDArray,
-                             evaluation_metric="smape"
-                             ) -> list[float]:
-
-        if evaluation_metric.lower() == "smape":
-            metric: Callable = smape
+    def evaluate(self, X_test: npt.NDArray, y_test: npt.NDArray, scoring="smape") -> list[float]:
+        metric: Callable
+        if scoring.lower() == "smape":
+            metric = metrics.smape
+        elif scoring.lower() == "mape":
+            metric = metrics.mape
 
         results: list[float] = []
         for p in self.pipelines:

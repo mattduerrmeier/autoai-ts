@@ -14,6 +14,8 @@ train, test = train_test_split(arr, test_size=0.2, shuffle=False)
 data_check.quality_check(train)
 
 look_back = data_check.compute_look_back_window(train)
+print("look back: ", look_back)
+print("array length: ", len(arr))
 
 contains_negative_value = data_check.negative_value_check(train)
 
@@ -21,7 +23,7 @@ pipelines: list[Model] = create_pipelines(contains_negative_value)
 X_train, y_train = dataset.to_supervised(train)
 
 top_pipelines = t_daub_algorithm(pipelines, X_train, y_train,
-                                 allocation_size=100,
+                                 allocation_size=look_back,
                                  geo_increment_size=5)
 
 print(top_pipelines)

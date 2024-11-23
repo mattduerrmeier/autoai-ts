@@ -1,9 +1,8 @@
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
+from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
-
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
@@ -21,31 +20,34 @@ def create_pipelines(contains_neg_values: bool=True, random_state: int=42) -> li
     zm = ZeroModel()
 
     # Stat Models
-    # # TODO: what to use for BATS? Exponential Smoothin parameters?
+    arima = StatsModelWrapper(ARIMA)
+    hw_add = StatsModelWrapper(ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4})
+    # currently impossible to install BATS because of pmdarima
+    # see this issue: https://github.com/alkaline-ml/pmdarima/issues/577
     # bats = None
-    arima = SMWrapper(ARIMA)
-    hw_add = SMWrapper(ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4})
 
     # ML Models
+    lr = LinearRegression()
     svr = SVR()
     rfr = RandomForestRegressor(random_state=random_state)
-    # AutoEnsembler: use XGBoost
+    # AutoEnsembler: use XGBoost instead
     xgb = XGBRegressor(random_state=random_state)
-    model_list = [zm, arima, hw_add, svr, rfr, xgb]
+
+    model_list = [zm, arima, hw_add, lr, svr, rfr, xgb]
 
     # include models that work with negative
     if contains_neg_values == False:
-        hw_mult = SMWrapper(ExponentialSmoothing, **{"seasonal": "Multiplicative", "seasonal_periods": 4})
+        hw_mult = StatsModelWrapper(ExponentialSmoothing, **{"seasonal": "Multiplicative", "seasonal_periods": 4})
         model_list.append(hw_mult)
 
-        # this needs to be combined with another model: which one?
+        # Transformer should be combined with other models => which one?
         # log_transformer = FunctionTransformer(np.log, validate=True)
         # model_list.append(log_transformer)
 
     return model_list
 
 
-class SMWrapper(Model):
+class StatsModelWrapper(Model):
     """
     A Wrapper for statsmodels regressor with true scikit-learn API.
     Required because statsmodel needs the data to initialize the model, but we want this to happen when we call fit instead.
@@ -54,7 +56,7 @@ class SMWrapper(Model):
         self.model_class = model_class
         self.kwargs = kwargs
 
-    def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'SMWrapper':
+    def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'StatsModelWrapper':
         m = self.model_class(X, **self.kwargs)
         self.model = m.fit()
         return self

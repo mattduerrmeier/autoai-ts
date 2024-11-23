@@ -27,7 +27,7 @@ def get_flights_dataset() -> pd.DataFrame:
 
 def get_cosine_function(freq=0.01, time=2000) -> npt.NDArray:
     t = np.arange(0, time)
-    amp = np.linspace(0, 1, t.size)
+    amp = np.linspace(0, 1000, t.size)
     return amp * np.sin(2*np.pi * freq * t + np.pi/2)
 
 

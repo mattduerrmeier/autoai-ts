@@ -5,8 +5,9 @@ import dataset
 from model import Model
 from t_daub import TDaub
 
-arr = dataset.get_cosine_function()
-X, y = dataset.to_supervised(arr)
+arr = dataset.get_flights_dataset()
+idx = arr.index.to_numpy()
+X, y = dataset.to_supervised(arr.to_numpy())
 # train-test split 80/20; not shuffled because time series
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
@@ -14,13 +15,14 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle
 data_check.quality_check(X_train)
 contains_negative_value = data_check.negative_value_check(X_train)
 
-look_back = data_check.compute_look_back_window(X_train)
+look_back = data_check.compute_look_back_window(X_train, idx)
 print("look back: \t", look_back)
 print("array length: \t", len(arr))
 
 pipelines: list[Model] = create_pipelines(contains_negative_value)
 
 tdaub = TDaub(pipelines)
-tdaub.fit(X_train, y_train, allocation_size=100, geo_increment_size=2, verbose=True)
+scoring = "smape"
+tdaub.fit(X_train, y_train, allocation_size=10, geo_increment_size=2, scoring=scoring, verbose=True)
 
-print("Evaluation: ", tdaub.evaluate(X_test, y_test))
+print("Evaluation: ", tdaub.score(X_test, y_test, scoring=scoring))

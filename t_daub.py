@@ -15,7 +15,8 @@ class TDaub():
             geo_increment_size: float=0.5,
             fixed_allocation_cutoff: int | None = None,
             run_to_completion: int = 3,
-            test_size: float = 0.2,
+            test_size: float=0.2,
+            scoring: str="smape",
             verbose: bool = True,
             ) -> list[Model]:
         """
@@ -25,6 +26,12 @@ class TDaub():
         """
 
         # move the data check here?
+        metric: Callable
+        if scoring.lower() == "smape":
+            metric = metrics.smape
+        elif scoring.lower() == "mape":
+            metric = metrics.mape
+
 
         if fixed_allocation_cutoff is None:
             fixed_allocation_cutoff = 5 * allocation_size
@@ -45,7 +52,8 @@ class TDaub():
                     X_train[L - allocation_size*(i+1):L],
                     y_train[L - allocation_size*(i+1):L],
                 )
-                score = p.score(X_test, y_test)
+                y_pred = p.predict(X_test)
+                score = metric(y_test, y_pred)
                 pipeline_scores[p_idx].append(score)
 
 
@@ -61,7 +69,7 @@ class TDaub():
 
 
         # sort the pipelines based on their average score
-        pipeline_scores_sorted = sorted(pipeline_scores.items(), key=lambda x: float(np.mean(x[1])), reverse=True)
+        pipeline_scores_sorted = sorted(pipeline_scores.items(), key=lambda x: float(np.mean(x[1])), reverse=False)
 
         ### 2. Allocation acceleration
         # TODO: fix the allocation acceleration
@@ -81,11 +89,12 @@ class TDaub():
                     X_train[l+1:L],
                     y_train[l+1:L],
                 )
-                score = p.score(X_test, y_test)
-                pipeline_scores[top_p_idx].append(score)
+                y_pred = p.predict(X_test)
+                score = metric(y_test, y_pred)
+                pipeline_scores[p_idx].append(score)
 
             # re-rank based on new score
-            pipeline_scores_sorted = sorted(pipeline_scores.items(), key=lambda x: float(np.mean(x[1])), reverse=True)
+            pipeline_scores_sorted = sorted(pipeline_scores.items(), key=lambda x: float(np.mean(x[1])), reverse=False)
 
             next_allocation = int(last_allocation_size * geo_increment_size * allocation_size**(-1)) * allocation_size
             l = l + next_allocation
@@ -96,10 +105,11 @@ class TDaub():
         top_scores: list[float] = []
         for top_p in top_pipelines:
             top_p.fit(X_train, y_train)
-            score = top_p.score(X_test, y_test)
+            y_pred = top_p.predict(X_test)
+            score = metric(y_test, y_pred)
             top_scores.append(score)
 
-        top_pipelines_sorted = [top_p for (top_p, _) in sorted(zip(top_pipelines, top_scores), key=lambda x: x[1], reverse=True)]
+        top_pipelines_sorted = [top_p for (top_p, _) in sorted(zip(top_pipelines, top_scores), key=lambda x: x[1], reverse=False)]
 
         if verbose:
             print(f"Best models: {[type(p).__name__ for p in top_pipelines_sorted]}")
@@ -113,12 +123,7 @@ class TDaub():
         return preds
 
 
-    def score(self, X: npt.NDArray, y: npt.NDArray) -> list[float]:
-        pipeline_scores = [p.score(X, y) for p in self.pipelines]
-        return pipeline_scores
-
-
-    def evaluate(self, X_test: npt.NDArray, y_test: npt.NDArray, scoring="smape") -> list[float]:
+    def score(self, X_test: npt.NDArray, y_test: npt.NDArray, scoring: str="smape") -> list[float]:
         metric: Callable
         if scoring.lower() == "smape":
             metric = metrics.smape

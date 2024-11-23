@@ -15,7 +15,8 @@ class TDaub():
             geo_increment_size: float=0.5,
             fixed_allocation_cutoff: int | None = None,
             run_to_completion: int = 3,
-            test_size: float = 0.2
+            test_size: float = 0.2,
+            verbose: bool = True,
             ) -> list[Model]:
         """
         Execute the T-Daub algorithm on the pipelines.
@@ -36,12 +37,14 @@ class TDaub():
         pipeline_scores: dict[int, list[float]] = {p_idx: [] for p_idx, _ in enumerate(self.pipelines)}
 
         for i in range(num_fix_runs):
+            if verbose:
+                print(f"Fixed allocation: [{L - allocation_size*(i+1)}|{L}]")
+
             for p_idx, p in enumerate(self.pipelines):
                 p.fit(
                     X_train[L - allocation_size*(i+1):L],
                     y_train[L - allocation_size*(i+1):L],
                 )
-
                 score = p.score(X_test, y_test)
                 pipeline_scores[p_idx].append(score)
 
@@ -61,30 +64,33 @@ class TDaub():
         pipeline_scores_sorted = sorted(pipeline_scores.items(), key=lambda x: float(np.mean(x[1])), reverse=True)
 
         ### 2. Allocation acceleration
-        # TODO: verify this part
+        # TODO: fix the allocation acceleration
         l = L - allocation_size * num_fix_runs
         last_allocation_size = num_fix_runs * allocation_size
 
         next_allocation = int(last_allocation_size * geo_increment_size * allocation_size**(-1)) * allocation_size
         l = l + next_allocation
         while l < L:
-            top_p_idx = pipeline_scores_sorted[0][0]
-            p = self.pipelines[top_p_idx]
-            p.fit(
-                X_train[l:L],
-                y_train[l:L],
-            )
+            if verbose:
+                print(f"Accel allocation: [{l}|{L}]")
 
-            score = p.score(X_test, y_test)
-            pipeline_scores[top_p_idx].append(score_preds)
+            for i in range(run_to_completion):
+                top_p_idx = pipeline_scores_sorted[i][0]
+                p = self.pipelines[top_p_idx]
+                p.fit(
+                    X_train[l+1:L],
+                    y_train[l+1:L],
+                )
+                score = p.score(X_test, y_test)
+                pipeline_scores[top_p_idx].append(score)
+
             # re-rank based on new score
             pipeline_scores_sorted = sorted(pipeline_scores.items(), key=lambda x: float(np.mean(x[1])), reverse=True)
 
             next_allocation = int(last_allocation_size * geo_increment_size * allocation_size**(-1)) * allocation_size
             l = l + next_allocation
 
-
-        ### T-Daub Scoring: select the top n pipelines (n = run_to_completion)
+        ### 3. T-Daub Scoring: select the top n pipelines (n = run_to_completion)
         top_pipelines: list[Model] = [self.pipelines[p_idx] for p_idx, _ in pipeline_scores_sorted[0:run_to_completion]]
 
         top_scores: list[float] = []
@@ -94,8 +100,9 @@ class TDaub():
             top_scores.append(score)
 
         top_pipelines_sorted = [top_p for (top_p, _) in sorted(zip(top_pipelines, top_scores), key=lambda x: x[1], reverse=True)]
-        print(top_pipelines_sorted)
-        print(top_scores)
+
+        if verbose:
+            print(f"Best models: {[type(p).__name__ for p in top_pipelines_sorted]}")
 
         self.pipelines = top_pipelines_sorted
         return top_pipelines_sorted

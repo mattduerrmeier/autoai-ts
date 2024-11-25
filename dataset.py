@@ -25,6 +25,16 @@ def get_flights_dataset() -> pd.DataFrame:
     return df
 
 
+def get_nasa_gistemp() -> pd.DataFrame:
+    df = pd.read_csv("data/nasa-gistemp.csv")
+
+    df["date"] = pd.to_datetime(df["year"], format="%Y")
+    # for now drop such that it's univariate
+    df = df.drop(columns=["no-smoothing", "year"])
+    df = df.set_index("date")
+    return df
+
+
 def get_cosine_function(freq=0.01, time=2000) -> npt.NDArray:
     t = np.arange(0, time)
     amp = np.linspace(0, 1000, t.size)

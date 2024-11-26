@@ -12,7 +12,7 @@ class TDaub():
 
     def fit(self, X: npt.NDArray, y: npt.NDArray,
             allocation_size: int=8,
-            geo_increment_size: float=0.5,
+            geo_increment_size: float=2,
             fixed_allocation_cutoff: int | None = None,
             run_to_completion: int = 3,
             test_size: float=0.2,

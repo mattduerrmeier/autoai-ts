@@ -5,9 +5,11 @@ import dataset
 from model import Model
 from t_daub import TDaub
 
-arr = dataset.get_flights_dataset()
+arr = dataset.get_ozone_dataset()
 idx = arr.index.to_numpy()
+
 X, y = dataset.to_supervised(arr.to_numpy())
+
 # train-test split 80/20; not shuffled because time series
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
@@ -23,6 +25,6 @@ pipelines: list[Model] = create_pipelines(contains_negative_value)
 
 tdaub = TDaub(pipelines)
 scoring = "smape"
-tdaub.fit(X_train, y_train, allocation_size=10, geo_increment_size=2, scoring=scoring, verbose=True)
+tdaub.fit(X_train, y_train, allocation_size=look_back, scoring=scoring, verbose=True)
 
 print("Evaluation: ", tdaub.score(X_test, y_test, scoring=scoring))

@@ -25,6 +25,11 @@ def get_flights_dataset() -> pd.DataFrame:
     return df
 
 
+def get_ozone_dataset() -> pd.DataFrame:
+    df = pd.read_csv("data/ozone.csv", parse_dates=["Month"], index_col="Month")
+    return df
+
+
 def get_nasa_gistemp() -> pd.DataFrame:
     df = pd.read_csv("data/nasa-gistemp.csv")
 

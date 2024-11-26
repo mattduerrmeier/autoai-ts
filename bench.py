@@ -5,7 +5,7 @@ import dataset
 import pipeline
 import time
 
-d = {"size": [], "mean_time": []}
+d: dict[str, list[float]] = {"size": [], "mean_time": []}
 
 for i in range(0, 4):
     l = []
@@ -33,7 +33,7 @@ for i in range(0, 4):
         time_diff = stop - start
         l.append(time_diff)
 
-    d["mean_time"].append(np.mean(l))
+    d["mean_time"].append(float(np.mean(l)))
 
 df = pd.DataFrame(d)
 print(df)

@@ -39,6 +39,24 @@ def get_nasa_gistemp() -> pd.DataFrame:
     df = df.set_index("date")
     return df
 
+def get_air_quality() -> pd.DataFrame:
+    df = pd.read_csv("data/air-quality.csv", sep=";", decimal=",")
+    df = df.drop(columns=["Unnamed: 15", "Unnamed: 16"])
+    df = df.dropna()
+
+    df["date"] = df["Date"].astype(str) + " " + df["Time"].astype(str)
+    df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y %H.%M.%S")
+    df = df.set_index("date")
+
+    df = df.drop(columns=["Date", "Time"])
+    return df
+
+def get_bundesplatz_temperature() -> pd.DataFrame:
+    df = pd.read_csv("data/bundesplatz-2024.csv", sep=";")
+    df["date"] = pd.to_datetime(df["dateObserved"])
+    df = df.set_index("date")
+    df = df.drop(columns="dateObserved")
+    return df
 
 def get_cosine_function(freq=0.01, time=2000) -> npt.NDArray:
     t = np.arange(0, time)
@@ -47,5 +65,8 @@ def get_cosine_function(freq=0.01, time=2000) -> npt.NDArray:
 
 
 def to_supervised(X: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
-    y = X[1:].reshape(X.size-1)
+    """
+    Transform a univariate time series into a supervised problem.
+    """
+    y = X[1:].flatten()
     return X[:-1].reshape(-1, 1), y

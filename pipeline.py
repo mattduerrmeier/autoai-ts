@@ -57,7 +57,7 @@ class StatsModelWrapper(Model):
         self.kwargs = kwargs
 
     def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'StatsModelWrapper':
-        m = self.model_class(X, **self.kwargs)
+        m = self.model_class(endog=y, **self.kwargs)
         self.model = m.fit()
         return self
 
@@ -79,7 +79,7 @@ class ZeroModel(Model):
         self.pred: float = 0.
 
     def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'ZeroModel':
-        self.pred = X[-1, -1]
+        self.pred = y[-1]
         return self
 
     def predict(self, X: npt.NDArray) -> npt.NDArray:

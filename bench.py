@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
-from t_daub import TDaub
+from autoaits.t_daub import TDaub
+from autoaits import pipeline
 import dataset
-import pipeline
 import time
 
 d: dict[str, list[float]] = {"size": [], "mean_time": []}

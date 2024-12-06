@@ -5,11 +5,10 @@ from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-
 import numpy as np
 import numpy.typing as npt
-from model import Model
 from typing import Callable
+from .model import Model
 
 def create_pipelines(contains_neg_values: bool=True, random_state: int=42) -> list[Model]:
     """

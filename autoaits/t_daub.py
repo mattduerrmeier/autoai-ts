@@ -1,9 +1,9 @@
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 import numpy as np
-from model import Model
+from . import metrics
+from .model import Model
 from typing import Callable
-import metrics
 import numpy.typing as npt
 
 class TDaub():

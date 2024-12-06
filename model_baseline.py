@@ -1,14 +1,14 @@
 from sklearn.model_selection import train_test_split
-from pipeline import create_pipelines
-from metrics import mape
-from model import Model
+from autoaits.pipeline import create_pipelines
+from autoaits.metrics import mape
+from autoaits.model import Model
 import dataset
 import pandas as pd
 import numpy as np
 from typing import Callable
 
 
-def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> tuple[dict[str, float], list[Model]]:
+def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> tuple[pd.DataFrame, list[Model]]:
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
     pipelines = create_pipelines()
@@ -23,8 +23,8 @@ def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> tuple[dic
 
     print(" -> Done!")
 
-    scores = pd.DataFrame(scores.items(), columns=["model", "mape"])
-    return scores, pipelines
+    df_scores = pd.DataFrame(scores.items(), columns=["model", "mape"])
+    return df_scores, pipelines
 
 
 ### air quality dataset

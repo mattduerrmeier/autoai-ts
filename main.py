@@ -1,9 +1,9 @@
 from sklearn.model_selection import train_test_split
-from pipeline import create_pipelines
-import data_check
 import dataset
-from model import Model
-from t_daub import TDaub
+from autoaits.pipeline import create_pipelines
+from autoaits import data_check
+from autoaits.model import Model
+from autoaits.t_daub import TDaub
 
 arr = dataset.get_flights_dataset()
 idx = arr.index.to_numpy()

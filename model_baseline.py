@@ -1,6 +1,6 @@
 from sklearn.model_selection import train_test_split
 from autoaits.pipeline import create_pipelines
-from autoaits.metrics import mape
+from autoaits.metrics import smape
 from autoaits.model import Model
 import dataset
 import pandas as pd
@@ -8,7 +8,7 @@ import numpy as np
 from typing import Callable
 
 
-def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> tuple[pd.DataFrame, list[Model]]:
+def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> pd.DataFrame:
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
     pipelines = create_pipelines()
@@ -23,42 +23,57 @@ def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> tuple[pd.
 
     print(" -> Done!")
 
-    df_scores = pd.DataFrame(scores.items(), columns=["model", "mape"])
-    return df_scores, pipelines
+    return pd.DataFrame(scores.items(), columns=["model", "smape"])
 
 
 ### air quality dataset
 df = dataset.get_air_quality()
 X = df.drop(columns="AH").to_numpy()
 y = df["AH"].to_numpy()
-scores, p = train_pipelines(X, y, mape)
+air_scores = train_pipelines(X, y, smape)
 
 # NASA Global average Temperature
 df = dataset.get_nasa_gistemp()
 X, y = dataset.to_supervised(df.to_numpy())
-scores, p = train_pipelines(X, y, mape)
+nasa_scores = train_pipelines(X, y, smape)
 
 ### Bern Bundesplatz Temperature
 df = dataset.get_bundesplatz_temperature()
 X = df["temperature"].to_numpy()
 X, y = dataset.to_supervised(X)
-scores, p = train_pipelines(X, y, mape)
+bern_scores = train_pipelines(X, y, smape)
 
 ### Flight dataset
 df = dataset.get_flights_dataset()
 X = df.to_numpy()
 X, y = dataset.to_supervised(X)
-scores, p = train_pipelines(X, y, mape)
+flight_scores = train_pipelines(X, y, smape)
 
 ### Ozone dataset
 df = dataset.get_ozone_dataset()
 X = df.to_numpy()
 X, y = dataset.to_supervised(X)
-scores, p = train_pipelines(X, y, mape)
+ozone_scores = train_pipelines(X, y, smape)
 
 ### visualize scores
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sns.barplot(scores, y="mape", hue="model")
+plt.style.use("ggplot")
+
+scores = pd.concat(
+    [air_scores, nasa_scores, bern_scores, flight_scores, ozone_scores],
+    keys=["Air Quality", "NASA GISTEMP", "Bundesplatz Temperature", "Passenger Flights", "Ozone"],
+    names=["dataset"],
+).reset_index(level=0).reset_index(drop=True)
+
+fig, ax = plt.subplots(figsize=(12, 9), layout="tight")
+ax.set_yscale("log")
+
+sns.barplot(scores, x="dataset", y="smape", hue="model", ax=ax)
+ax.set_ylabel("SMAPE")
+ax.set_xlabel("Dataset")
+ax.legend(title="Model")
 plt.show()
+
+fig.savefig("model-selection.png", dpi=200, format="png")

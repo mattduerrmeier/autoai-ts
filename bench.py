@@ -9,7 +9,7 @@ d: dict[str, list[float]] = {"size": [], "mean_time": []}
 
 for i in range(0, 4):
     l = []
-    size = 10**i * 100
+    size = 10**(i+2) # 100, 1'000, 10'000, 100'000
     print(f"size: {size}")
     d["size"].append(size)
 

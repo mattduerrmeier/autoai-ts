@@ -32,7 +32,7 @@ def create_pipelines(contains_neg_values: bool=True, random_state: int=42) -> li
     # AutoEnsembler: use XGBoost instead
     xgb = XGBRegressor(random_state=random_state)
 
-    model_list = [zm, arima, hw_add, svr, rfr, xgb]
+    model_list = [lr, zm, arima, hw_add, svr, rfr, xgb]
 
     # include models that work with negative
     if contains_neg_values == False:

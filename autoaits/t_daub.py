@@ -138,12 +138,16 @@ class TDaub():
         return preds
 
 
-    def score(self, X_test: npt.NDArray, y_test: npt.NDArray, scoring: str="smape") -> list[float]:
+    def score(self, X_test: npt.NDArray, y_test: npt.NDArray, scoring: str | Callable="smape") -> list[float]:
         metric: Callable
-        if scoring.lower() == "smape":
+        if callable(scoring):
+            metric = scoring
+        elif scoring.lower() == "smape":
             metric = metrics.smape
         elif scoring.lower() == "mape":
             metric = metrics.mape
+        else:
+            raise TypeError(f"This scoring function '{scoring}' is not available")
 
         results: list[float] = []
         for p in self.pipelines:

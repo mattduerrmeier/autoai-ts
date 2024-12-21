@@ -1,22 +1,29 @@
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from autoaits import data_check
+from autoaits.pipeline import create_pipelines
+from autoaits.metrics import smape
 import numpy as np
-from . import metrics
 from .model import Model
 from typing import Callable
 import numpy.typing as npt
 
 class TDaub():
-    def __init__(self, pipelines: list[Model]):
+    def __init__(self, pipelines: list[Model] | None = None):
+        if pipelines is None:
+            pipelines: list[Model] = create_pipelines() # negative values check?
+
         self.pipelines = pipelines
 
-    def fit(self, X: npt.NDArray, y: npt.NDArray,
+    def fit(self,
+            X: npt.NDArray,
+            y: npt.NDArray,
             allocation_size: int=8,
             geo_increment_size: float=2,
             fixed_allocation_cutoff: int | None = None,
             run_to_completion: int = 3,
             test_size: float=0.2,
-            scoring: str="smape",
+            metric: Callable = smape,
             verbose: bool = True,
             ) -> list[Model]:
         """
@@ -24,13 +31,6 @@ class TDaub():
         Returns on the top `run_to_completion` pipelines.
         Modifies the object's state as well.
         """
-        # move the data check here?
-
-        metric: Callable
-        if scoring.lower() == "smape":
-            metric = metrics.smape
-        elif scoring.lower() == "mape":
-            metric = metrics.mape
 
         if fixed_allocation_cutoff is None:
             fixed_allocation_cutoff = 5 * allocation_size
@@ -138,16 +138,11 @@ class TDaub():
         return preds
 
 
-    def score(self, X_test: npt.NDArray, y_test: npt.NDArray, scoring: str | Callable="smape") -> list[float]:
-        metric: Callable
-        if callable(scoring):
-            metric = scoring
-        elif scoring.lower() == "smape":
-            metric = metrics.smape
-        elif scoring.lower() == "mape":
-            metric = metrics.mape
-        else:
-            raise TypeError(f"This scoring function '{scoring}' is not available")
+    def score(self,
+              X_test: npt.NDArray,
+              y_test: npt.NDArray,
+              metric: Callable = smape
+        ) -> list[float]:
 
         results: list[float] = []
         for p in self.pipelines:

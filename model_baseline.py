@@ -1,7 +1,6 @@
 from sklearn.model_selection import train_test_split
-from autoaits.pipeline import create_pipelines
-from autoaits.metrics import smape
-from autoaits.model import Model
+from autoai_ts.pipeline import create_pipelines
+from autoai_ts.metrics import smape
 import dataset
 import pandas as pd
 import numpy as np
@@ -9,7 +8,9 @@ from typing import Callable
 
 
 def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> pd.DataFrame:
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, shuffle=False
+    )
 
     pipelines = create_pipelines()
     scores: dict[str, float] = {}
@@ -61,11 +62,21 @@ import seaborn as sns
 
 plt.style.use("ggplot")
 
-scores = pd.concat(
-    [air_scores, nasa_scores, bern_scores, flight_scores, ozone_scores],
-    keys=["Air Quality", "NASA GISTEMP", "Bundesplatz Temperature", "Passenger Flights", "Ozone"],
-    names=["dataset"],
-).reset_index(level=0).reset_index(drop=True)
+scores = (
+    pd.concat(
+        [air_scores, nasa_scores, bern_scores, flight_scores, ozone_scores],
+        keys=[
+            "Air Quality",
+            "NASA GISTEMP",
+            "Bundesplatz Temperature",
+            "Passenger Flights",
+            "Ozone",
+        ],
+        names=["dataset"],
+    )
+    .reset_index(level=0)
+    .reset_index(drop=True)
+)
 
 fig, ax = plt.subplots(figsize=(12, 9), layout="tight")
 ax.set_yscale("log")

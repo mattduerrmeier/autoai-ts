@@ -1,4 +1,3 @@
-from sklearn.preprocessing import FunctionTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
@@ -7,10 +6,12 @@ from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 import numpy as np
 import numpy.typing as npt
-from typing import Callable
-from .model import Model
+from autoai_ts.model import Model
 
-def create_pipelines(contains_neg_values: bool=True, random_state: int=42) -> list[Model]:
+
+def create_pipelines(
+    contains_neg_values: bool = True, random_state: int = 42
+) -> list[Model]:
     """
     Initialize the model pipelines.
     Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
@@ -20,7 +21,9 @@ def create_pipelines(contains_neg_values: bool=True, random_state: int=42) -> li
 
     # Stat Models
     arima = StatsModelWrapper(ARIMA)
-    hw_add = StatsModelWrapper(ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4})
+    hw_add = StatsModelWrapper(
+        ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4}
+    )
     # currently impossible to install BATS because of pmdarima
     # see this issue: https://github.com/alkaline-ml/pmdarima/issues/577
     # bats = None
@@ -35,8 +38,11 @@ def create_pipelines(contains_neg_values: bool=True, random_state: int=42) -> li
     model_list = [lr, zm, arima, hw_add, svr, rfr, xgb]
 
     # include models that work with negative
-    if contains_neg_values == False:
-        hw_mult = StatsModelWrapper(ExponentialSmoothing, **{"seasonal": "Multiplicative", "seasonal_periods": 4})
+    if not contains_neg_values:
+        hw_mult = StatsModelWrapper(
+            ExponentialSmoothing,
+            **{"seasonal": "Multiplicative", "seasonal_periods": 4},
+        )
         model_list.append(hw_mult)
 
         # Transformer should be combined with other models => which one?
@@ -51,11 +57,12 @@ class StatsModelWrapper(Model):
     A Wrapper for statsmodels regressor with true scikit-learn API.
     Required because statsmodel needs the data to initialize the model, but we want this to happen when we call fit instead.
     """
+
     def __init__(self, model_class, **kwargs):
         self.model_class = model_class
         self.kwargs = kwargs
 
-    def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'StatsModelWrapper':
+    def fit(self, X: npt.NDArray, y: npt.NDArray) -> "StatsModelWrapper":
         m = self.model_class(endog=y, **self.kwargs)
         self.model = m.fit()
         return self
@@ -65,6 +72,7 @@ class StatsModelWrapper(Model):
 
     def score(self, X: npt.NDArray, y: npt.NDArray) -> float:
         from sklearn.metrics import r2_score
+
         y_pred = self.model.forecast(len(X))
         return r2_score(y, y_pred)
 
@@ -74,10 +82,11 @@ class ZeroModel(Model):
     the Zero model is used as the baseline by AutoAI-TS.
     This model always returns the most recent value of the time series as prediction.
     """
-    def __init__(self) -> None:
-        self.pred: float = 0.
 
-    def fit(self, X: npt.NDArray, y: npt.NDArray) -> 'ZeroModel':
+    def __init__(self) -> None:
+        self.pred: float = 0.0
+
+    def fit(self, X: npt.NDArray, y: npt.NDArray) -> "ZeroModel":
         self.pred = y[-1]
         return self
 
@@ -86,5 +95,6 @@ class ZeroModel(Model):
 
     def score(self, X: npt.NDArray, y: npt.NDArray) -> float:
         from sklearn.metrics import r2_score
+
         y_pred = self.predict(X)
         return r2_score(y, y_pred)

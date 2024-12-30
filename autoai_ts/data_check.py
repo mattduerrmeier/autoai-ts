@@ -1,4 +1,3 @@
-from scipy.signal import find_peaks
 import pandas as pd
 import numpy.typing as npt
 import numpy as np
@@ -9,8 +8,6 @@ def quality_check(X: npt.NDArray) -> None:
     Verifies that the data has no nan values and on strings.
     Raises an error if there are issues with the data.
     """
-
-    status: bool = False
 
     # input array should not contain strings
     if X.dtype.type == np.object_:
@@ -30,11 +27,12 @@ def negative_value_check(x: npt.NDArray) -> bool:
     return bool((x < 0).any())
 
 
-def compute_look_back_window(x: npt.NDArray,
-                             timestamps: npt.NDArray | None=None,
-                             timestamp_column_idx: int | None=None,
-                             max_look_back: int | None=None
-                             ) -> int:
+def compute_look_back_window(
+    x: npt.NDArray,
+    timestamps: npt.NDArray | None = None,
+    timestamp_column_idx: int | None = None,
+    max_look_back: int | None = None,
+) -> int:
     """
     Computes the look back window length for the input dataset.
     Timestamps must be passed explicitly to be used.
@@ -81,14 +79,15 @@ def _timestamp_analysis(timestamps: npt.NDArray[np.datetime64]) -> list[int]:
         possible_seasonal_periods = [1, 24, 1440, 86400]
     elif frequency == "W":
         possible_seasonal_periods = [1, 7, 168, 10080, 604800]
-    elif frequency[0] == "M": # MS or MY (month start or month end)
+    elif frequency[0] == "M":  # MS or MY (month start or month end)
         possible_seasonal_periods = [1, 4, 30, 720, 43200, 2592000]
-    elif frequency[0] == "Y": # YS or YE (year start / year end)
+    elif frequency[0] == "Y":  # YS or YE (year start / year end)
         possible_seasonal_periods = [1, 12, 52, 365, 8766, 525960, 31557600]
 
     return possible_seasonal_periods
 
-def _spectral_analysis(values :npt.NDArray) -> int:
+
+def _spectral_analysis(values: npt.NDArray) -> int:
     # transform to the frequency domain
     fft = np.fft.fft(values)
     # find the peak in this domain
@@ -96,10 +95,9 @@ def _spectral_analysis(values :npt.NDArray) -> int:
     return peak
 
 
-def _select_look_back(look_backs: list[int],
-                      len_x: int,
-                      max_look_back: int | None=None
-                      ) -> int:
+def _select_look_back(
+    look_backs: list[int], len_x: int, max_look_back: int | None = None
+) -> int:
     look_backs = [
         lb
         for lb in look_backs

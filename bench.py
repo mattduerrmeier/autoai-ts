@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from autoai_ts.t_daub import TDaub
-from autoai_ts import pipeline
+from pipeline import create_pipelines
 import dataset
 import time
 
@@ -19,7 +19,7 @@ for i in range(0, 4):
     window_length = size // 10
 
     for j in range(10):
-        pipelines = pipeline.create_pipelines(random_state=42 + j)
+        pipelines = create_pipelines(random_state=42 + j)
         tdaub = TDaub(pipelines)
 
         start = time.time()

@@ -4,7 +4,6 @@ from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-import numpy as np
 import numpy.typing as npt
 from autoai_ts.model import Model
 
@@ -13,12 +12,9 @@ def create_pipelines(
     contains_neg_values: bool = True, random_state: int = 42
 ) -> list[Model]:
     """
-    Initialize the model pipelines.
+    Initialize the model pipelines used in T-Daub.
     Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
     """
-    # Zero Model
-    zm = ZeroModel()
-
     # Stat Models
     arima = StatsModelWrapper(ARIMA)
     hw_add = StatsModelWrapper(
@@ -35,7 +31,7 @@ def create_pipelines(
     # AutoEnsembler: use XGBoost instead
     xgb = XGBRegressor(random_state=random_state)
 
-    model_list = [lr, zm, arima, hw_add, svr, rfr, xgb]
+    model_list = [lr, arima, hw_add, svr, rfr, xgb]
 
     # include models that work with negative
     if not contains_neg_values:
@@ -54,8 +50,9 @@ def create_pipelines(
 
 class StatsModelWrapper(Model):
     """
-    A Wrapper for statsmodels regressor with true scikit-learn API.
-    Required because statsmodel needs the data to initialize the model, but we want this to happen when we call fit instead.
+    A Wrapper with scikit-learn API for statsmodels regressor.
+    Statsmodels need the data to initialize the model.
+    To conform to the API, this should happen we call fit instead.
     """
 
     def __init__(self, model_class, **kwargs):
@@ -74,27 +71,4 @@ class StatsModelWrapper(Model):
         from sklearn.metrics import r2_score
 
         y_pred = self.model.forecast(len(X))
-        return r2_score(y, y_pred)
-
-
-class ZeroModel(Model):
-    """
-    the Zero model is used as the baseline by AutoAI-TS.
-    This model always returns the most recent value of the time series as prediction.
-    """
-
-    def __init__(self) -> None:
-        self.pred: float = 0.0
-
-    def fit(self, X: npt.NDArray, y: npt.NDArray) -> "ZeroModel":
-        self.pred = y[-1]
-        return self
-
-    def predict(self, X: npt.NDArray) -> npt.NDArray:
-        return np.array([self.pred] * len(X))
-
-    def score(self, X: npt.NDArray, y: npt.NDArray) -> float:
-        from sklearn.metrics import r2_score
-
-        y_pred = self.predict(X)
         return r2_score(y, y_pred)

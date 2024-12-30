@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from autoai_ts.pipeline import create_pipelines
+from pipeline import create_pipelines
 from autoai_ts.metrics import smape
 import dataset
 import pandas as pd

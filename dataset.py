@@ -70,7 +70,7 @@ def get_bundesplatz_temperature() -> pd.DataFrame:
     return df
 
 
-def get_cosine_function(freq=0.01, time=2000) -> npt.NDArray:
+def get_cosine_function(freq: float = 0.01, time: int = 2000) -> npt.NDArray:
     t = np.arange(0, time)
     amp = np.linspace(0, 1000, t.size)
     return amp * np.sin(2 * np.pi * freq * t + np.pi / 2)
@@ -79,6 +79,8 @@ def get_cosine_function(freq=0.01, time=2000) -> npt.NDArray:
 def to_supervised(X: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
     """
     Transform a univariate time series into a supervised problem.
+    This is done by creating a lag feature, shifting the observations by 1 step.
+
     """
     y = X[1:].flatten()
     return X[:-1].reshape(-1, 1), y

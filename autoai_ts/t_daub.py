@@ -1,19 +1,19 @@
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from autoai_ts.pipeline import create_pipelines
-from autoai_ts.metrics import smape
+from sklearn.linear_model import LinearRegression  # TODO: replace with numpy polyfit
+from sklearn.model_selection import train_test_split  # TODO: replace with our own
 import numpy as np
+from autoai_ts.zero_model import ZeroModel
+from autoai_ts.metrics import smape
 from autoai_ts.model import Model
 from typing import Callable
 import numpy.typing as npt
 
 
 class TDaub:
-    def __init__(self, pipelines: list[Model] | None = None):
-        if pipelines is None:
-            pipelines = create_pipelines()  # negative values check?
-
+    def __init__(self, pipelines: list[Model], use_zm: bool = True):
         self.pipelines = pipelines
+        if use_zm:
+            zm = ZeroModel()
+            self.pipelines.append(zm)
 
     def fit(
         self,

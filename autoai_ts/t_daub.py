@@ -28,9 +28,41 @@ class TDaub:
         verbose: bool = True,
     ) -> list[Model]:
         """
-        Execute the T-Daub algorithm on the pipelines.
-        Returns on the top `run_to_completion` pipelines.
-        Modifies the object's state as well.
+        Execute the T-Daub algorithm on the list of pipelines.
+        Returns the top `run_to_completion` pipelines.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data.
+
+        y : array-like of shape (n_samples, n_targets)
+            Target values.
+
+        allocation_size : int, default 8
+            Slice of data to use in the fixed allocation.
+
+        geo_increment_size : float, default 2
+            Size of the geo-increment to use in the allocation acceleration.
+
+        run_to_completion : int, default 3
+            Number of models to select from the list of top performers.
+
+        test_size : float, default 0.2
+            Proportion of the data to use in the validation set.
+            Should be between 0.0 and 1.0.
+
+        metric : Callable, default smape
+            Function to compute the score on the validation set.
+
+        verbose : bool, default True
+            If True, prints additional information during model selection.
+
+        Returns
+        -------
+        list[Model]
+            A list of the top `run_to_completion` models
+            selected by the T-Daub algorithm.
         """
 
         if fixed_allocation_cutoff is None:
@@ -149,16 +181,50 @@ class TDaub:
         return top_pipelines
 
     def predict(self, X: npt.NDArray) -> list[npt.NDArray]:
+        """
+        Predict using each of the pipelines selected by T-Daub.
+
+        Parameters
+        ----------
+        X : array-like of shape(n_samples, n_features)
+            Samples to predict.
+
+        Returns
+        -------
+        list[np.NDArray] : list of size `run_to_completion`
+            A list containing the predicted samples.
+        """
+
         preds = [p.predict(X) for p in self.pipelines]
         return preds
 
     def score(
-        self, X_test: npt.NDArray, y_test: npt.NDArray, metric: Callable = smape
+        self, X: npt.NDArray, y: npt.NDArray, metric: Callable = smape
     ) -> list[float]:
+        """
+        Score each of the pipelines selected by T-Daub.
+
+        Parameters
+        ----------
+        X : array-like of shape(n_samples, n_features)
+            Samples to predict.
+
+        y : array-like of shape (n_samples, n_targets)
+            Target values.
+
+        metric : Callable, default smape
+            Function to compute the score.
+
+        Returns
+        -------
+        list[float]
+            A list containing the scores.
+        """
+
         results: list[float] = []
         for p in self.pipelines:
-            y_preds = p.predict(X_test)
-            score = metric(y_preds, y_test)
+            y_preds = p.predict(X)
+            score = metric(y_preds, y)
             results.append(score)
 
         return results

@@ -2,27 +2,47 @@ import pandas as pd
 import numpy as np
 import numpy.typing as npt
 
+"""
+This Module performs the data quality check and the look-back window computation in AutoAI-TS,
+the first two steps of this model selection techniques.
+"""
+
 
 def quality_check(X: npt.NDArray) -> None:
     """
-    Verifies that the data has no nan values and on strings.
+    Verifies that the data has no NaN values or strings.
     Raises an error if there are issues with the data.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Data to verify.
     """
 
     # input array should not contain strings
     if X.dtype.type == np.object_:
-        raise TypeError("T-Daub cannot accept data with strings")
+        raise TypeError("AutoAI-TS cannot accept data with strings")
 
     # input array should not contain nan values
     if np.isnan(np.sum(X)) == np.True_:
-        raise TypeError("T-Daub cannot accept data with NaN values")
+        raise TypeError("AutoAI-TS cannot accept data with NaN values")
 
 
 def negative_value_check(x: npt.NDArray) -> bool:
     """
     Check for negatives values in the input array.
-    Log transformation are impossible on negative values.
+    For example, log transformation are impossible on negative values.
     Return true if there are negative values, false otherwise.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Data to verify.
+
+    Returns
+    -------
+    bool
+        True if the are negative values in the data, false otherwise.
     """
     return bool((x < 0).any())
 
@@ -36,6 +56,25 @@ def compute_look_back_window(
     Computes the look back window length for the input dataset.
     Timestamps must be passed explicitly to be used.
     Currently works only with univariate datasets.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Data used to compute the look-back window.
+        Value index assessment is performed on these values.
+
+    timestamps: array-like of shape (n_samples), default None
+        Optional timestamps or index of the data.
+        Timestamps assessment is performed on these values.
+
+    max_look_back: int, default None
+        Maximum value for the look-back window.
+        Used during the look-back candidate selection.
+
+    Returns
+    -------
+    int
+        The optimal look-back window for X.
     """
     look_backs: list[int] = []
 

@@ -2,11 +2,16 @@ from autoai_ts.model import Model
 import numpy as np
 import numpy.typing as npt
 
+"""
+This module contains the Zero Model class used in AutoAI-TS".
+"""
+
 
 class ZeroModel(Model):
     """
     The Zero Model is used as a baseline in AutoAI-TS.
-    It always returns the most recent value of the time series as prediction.
+    It always forecasts the most recent value of a time series.
+    Implemented with a Scikit-Learn style API.
     """
 
     def __init__(self) -> None:

@@ -48,7 +48,7 @@ class StatsModelWrapper(Model):
     To conform to the scikit-learn API, this should happen we call fit instead.
     """
 
-    def __init__(self, model_class, **kwargs):
+    def __init__(self, model_class, **kwargs) -> None:
         self.model_class = model_class
         self.kwargs = kwargs
 

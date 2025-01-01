@@ -8,9 +8,7 @@ import numpy.typing as npt
 from autoai_ts.model import Model
 
 
-def create_pipelines(
-    contains_neg_values: bool = True, random_state: int = 42
-) -> list[Model]:
+def create_pipelines(random_state: int = 42) -> list[Model]:
     """
     Initialize the model pipelines used in T-Daub.
     Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
@@ -19,6 +17,10 @@ def create_pipelines(
     arima = StatsModelWrapper(ARIMA)
     hw_add = StatsModelWrapper(
         ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4}
+    )
+    hw_mult = StatsModelWrapper(
+        ExponentialSmoothing,
+        **{"seasonal": "Multiplicative", "seasonal_periods": 4},
     )
     # currently impossible to install BATS because of pmdarima
     # see this issue: https://github.com/alkaline-ml/pmdarima/issues/577
@@ -31,19 +33,10 @@ def create_pipelines(
     # AutoEnsembler: use XGBoost instead
     xgb = XGBRegressor(random_state=random_state)
 
-    model_list = [lr, arima, hw_add, svr, rfr, xgb]
+    model_list = [arima, hw_add, hw_mult, lr, svr, rfr, xgb]
 
-    # include models that work with negative
-    if not contains_neg_values:
-        hw_mult = StatsModelWrapper(
-            ExponentialSmoothing,
-            **{"seasonal": "Multiplicative", "seasonal_periods": 4},
-        )
-        model_list.append(hw_mult)
-
-        # Transformer should be combined with other models => which one?
-        # log_transformer = FunctionTransformer(np.log, validate=True)
-        # model_list.append(log_transformer)
+    # Transformer should be combined with other models => which one?
+    # log_transformer = FunctionTransformer(np.log, validate=True)
 
     return model_list
 
@@ -52,7 +45,7 @@ class StatsModelWrapper(Model):
     """
     A Wrapper with scikit-learn API for statsmodels regressor.
     Statsmodels need the data to initialize the model.
-    To conform to the API, this should happen we call fit instead.
+    To conform to the scikit-learn API, this should happen we call fit instead.
     """
 
     def __init__(self, model_class, **kwargs):

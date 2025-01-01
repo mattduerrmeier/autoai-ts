@@ -1,6 +1,6 @@
 import pandas as pd
-import numpy.typing as npt
 import numpy as np
+import numpy.typing as npt
 
 
 def quality_check(X: npt.NDArray) -> None:
@@ -30,7 +30,6 @@ def negative_value_check(x: npt.NDArray) -> bool:
 def compute_look_back_window(
     x: npt.NDArray,
     timestamps: npt.NDArray | None = None,
-    timestamp_column_idx: int | None = None,
     max_look_back: int | None = None,
 ) -> int:
     """

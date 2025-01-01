@@ -1,6 +1,8 @@
 from sklearn.linear_model import LinearRegression  # TODO: replace with numpy polyfit
 from sklearn.model_selection import train_test_split  # TODO: replace with our own
 import numpy as np
+import pandas as pd
+from autoai_ts import data_check
 from autoai_ts.zero_model import ZeroModel
 from autoai_ts.metrics import smape
 from autoai_ts.model import Model
@@ -9,13 +11,139 @@ import numpy.typing as npt
 
 
 class TDaub:
-    def __init__(self, pipelines: list[Model], use_zm: bool = True):
+    def __init__(
+        self,
+        pipelines: list[Model],
+        positive_idx: list[int] | None = None,
+        use_zm: bool = True,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        pipelines : list
+            List of pipelines to use in AutoAI-TS.
+
+        positive_idx : list, default None
+            List of the indexes of pipelines that only work on positive values.
+            During the data quality check, the first step of AutoAI-TS,
+            these pipelines will be deactivated if the dataset contains negative values.
+
+        use_zm : bool, default True
+            If True, adds the Zero model to the list of pipelines
+        """
         self.pipelines = pipelines
+        self.positive_idx = positive_idx
         if use_zm:
             zm = ZeroModel()
             self.pipelines.append(zm)
 
     def fit(
+        self,
+        X: npt.NDArray,
+        y: npt.NDArray,
+        timestamps: npt.NDArray | None = None,
+        max_look_back: int | None = None,
+        allocation_size: int | None = None,
+        geo_increment_size: float = 2,
+        fixed_allocation_cutoff: int | None = None,
+        run_to_completion: int = 3,
+        test_size: float = 0.2,
+        metric: Callable = smape,
+        verbose: bool = True,
+    ) -> list[Model]:
+        """
+        Performs AutoAI-TS.
+        Verifies the integrity of the data, deactivate some pipelines
+        on negative values, And compute the look-back window.
+        Then, execute the T-Daub algorithm on the list of pipelines.
+        Returns the top `run_to_completion` pipelines.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data.
+
+        y : array-like of shape (n_samples, n_targets)
+            Target values.
+
+        timestamps : array-like of shape (n_samples), default None
+            Optional timestamps or index of the data.
+            Used for the automatic look-back window computation.
+            If X is a pandas DataFrame, this value is inferred automatically.
+
+        allocation_size : int, default 8
+            Slice of data to use during the fixed allocation.
+
+        geo_increment_size : float, default 2
+            Size of the geo-increment to use during the allocation acceleration.
+
+        run_to_completion : int, default 3
+            Number of models to select from the list of top performers
+            at the end of T-Daub.
+
+        test_size : float, default 0.2
+            Proportion of the data to use in the validation set.
+            Should be between 0.0 and 1.0.
+
+        metric : Callable, default smape
+            Function used to compute the score on the validation set.
+
+        verbose : bool, default True
+            If True, prints information during model selection.
+
+        Returns
+        -------
+        list[Model]
+            A list of the top `run_to_completion` models
+            selected by the T-Daub algorithm.
+        """
+        # 1. Data quality check
+        data_check.quality_check(X)
+
+        # deactivate pipelines that do not work on negative values
+        contains_neg_values = data_check.negative_value_check(X)
+        if (
+            self.positive_idx is not None
+            and len(self.positive_idx) > 0
+            and contains_neg_values
+        ):
+            self.pipelines = [
+                p
+                for p_idx, p in enumerate(self.pipelines)
+                if p_idx not in self.positive_idx
+            ]
+
+            if verbose:
+                print(
+                    f"Negative values: deactivating models at index {self.positive_idx}"
+                )
+
+        # 2. Look-back window computation
+        if allocation_size is None:
+            if timestamps is None and isinstance(X, pd.DataFrame):
+                timestamps = X.index
+
+            allocation_size = data_check.compute_look_back_window(
+                X, timestamps=timestamps, max_look_back=max_look_back
+            )
+
+        if verbose:
+            print(f"Look back size: {allocation_size}; Dataset length: {len(X)}")
+
+        # 3. T-Daub model selection
+        return self.t_daub(
+            X,
+            y,
+            allocation_size=allocation_size,
+            geo_increment_size=geo_increment_size,
+            fixed_allocation_cutoff=fixed_allocation_cutoff,
+            run_to_completion=run_to_completion,
+            test_size=test_size,
+            metric=metric,
+            verbose=verbose,
+        )
+
+    def t_daub(
         self,
         X: npt.NDArray,
         y: npt.NDArray,
@@ -27,44 +155,6 @@ class TDaub:
         metric: Callable = smape,
         verbose: bool = True,
     ) -> list[Model]:
-        """
-        Execute the T-Daub algorithm on the list of pipelines.
-        Returns the top `run_to_completion` pipelines.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data.
-
-        y : array-like of shape (n_samples, n_targets)
-            Target values.
-
-        allocation_size : int, default 8
-            Slice of data to use in the fixed allocation.
-
-        geo_increment_size : float, default 2
-            Size of the geo-increment to use in the allocation acceleration.
-
-        run_to_completion : int, default 3
-            Number of models to select from the list of top performers.
-
-        test_size : float, default 0.2
-            Proportion of the data to use in the validation set.
-            Should be between 0.0 and 1.0.
-
-        metric : Callable, default smape
-            Function to compute the score on the validation set.
-
-        verbose : bool, default True
-            If True, prints additional information during model selection.
-
-        Returns
-        -------
-        list[Model]
-            A list of the top `run_to_completion` models
-            selected by the T-Daub algorithm.
-        """
-
         if fixed_allocation_cutoff is None:
             fixed_allocation_cutoff = 5 * allocation_size
 

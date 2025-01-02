@@ -1,5 +1,4 @@
 from sklearn.linear_model import LinearRegression  # TODO: replace with numpy polyfit
-from sklearn.model_selection import train_test_split  # TODO: replace with our own
 import numpy as np
 import pandas as pd
 from autoai_ts import data_check
@@ -83,7 +82,7 @@ class TDaub:
 
         test_size : float, default 0.2
             Proportion of the data to use in the validation set.
-            Should be between 0.0 and 1.0.
+            Must be between 0.0 and 1.0.
 
         metric : Callable, default smape
             Function used to compute the score on the validation set.
@@ -158,8 +157,8 @@ class TDaub:
         if fixed_allocation_cutoff is None:
             fixed_allocation_cutoff = 5 * allocation_size
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, shuffle=False
+        X_train, X_test, y_train, y_test = data_check.train_test_split(
+            X, y, test_size=test_size
         )
         L = len(X_train)
 

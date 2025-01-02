@@ -4,8 +4,41 @@ import numpy.typing as npt
 
 """
 This Module performs the data quality check and the look-back window computation in AutoAI-TS,
-the first two steps of this model selection techniques.
+the first two steps of this model selection technique.
 """
+
+
+def train_test_split(
+    X: npt.NDArray,
+    y: npt.NDArray,
+    test_size: float = 0.2,
+) -> list[npt.NDArray]:
+    """
+    Split the time series data into a train and a test split.
+    The data is not shuffled.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Train data to split.
+
+    y : array-like of shape (n_samples, n_targets)
+        Target data to split.
+
+    test_size : float, default 0.2
+        Proportion of the data to use in the test set.
+        Must be between 0.0 and 1.0.
+
+    Returns
+    -------
+    list[array-like]
+        `X_train, X_test, y_train, y_test` splits.
+    """
+    split_point = len(X) - int(np.ceil(len(X) * test_size))
+
+    X_train, X_test = X[:split_point], X[split_point:]
+    y_train, y_test = y[:split_point], y[split_point:]
+    return [X_train, X_test, y_train, y_test]
 
 
 def quality_check(X: npt.NDArray) -> None:

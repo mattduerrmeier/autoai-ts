@@ -76,11 +76,19 @@ def get_cosine_function(freq: float = 0.01, time: int = 2000) -> npt.NDArray:
     return amp * np.sin(2 * np.pi * freq * t + np.pi / 2)
 
 
-def to_supervised(X: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
+def to_supervised[T: (npt.NDArray, pd.DataFrame)](X: T) -> tuple[T, T]:
     """
     Transform a univariate time series into a supervised problem.
     This is done by creating a lag feature, shifting the observations by 1 step.
-
     """
-    y = X[1:].flatten()
-    return X[:-1].reshape(-1, 1), y
+    y: np.ndarray | pd.DataFrame
+    if isinstance(X, np.ndarray):
+        y = X[1:].flatten()
+        return X[:-1].reshape(-1, 1), y
+    if isinstance(X, pd.DataFrame):
+        # must fill with a 0 otherwise it changes the data type
+        y = X.shift(-1, fill_value=0).iloc[:-1]
+        return X.iloc[:-1], y
+    else:
+        msg = f"{type(X)} is not supported"
+        raise TypeError(msg)

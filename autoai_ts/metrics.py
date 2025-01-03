@@ -9,9 +9,9 @@ def smape(y_true: npt.NDArray, y_pred: npt.NDArray) -> float:
         * np.abs(y_true - y_pred)
         / np.maximum((np.abs(y_true) + np.abs(y_pred)), epsilon)
     )
-    return smape
+    return smape.item()
 
 
 def mape(y_true: npt.NDArray, y_pred: npt.NDArray) -> float:
     mape = 100 * np.mean(np.abs(y_true - y_pred) / np.abs(y_true))
-    return mape
+    return mape.item()

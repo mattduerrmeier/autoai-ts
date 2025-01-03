@@ -183,8 +183,8 @@ def _select_look_back(
     look_back: int
     if len(look_backs) > 1:
         # influence vector: how can to implement this?
-        # for now, we use the median value
-        look_back = int(np.median(look_backs))
+        # for now, we use the minimum value
+        look_back = int(np.min(look_backs))
     elif len(look_backs) == 1:
         look_back = look_backs[0]
     else:

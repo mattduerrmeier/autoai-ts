@@ -96,6 +96,14 @@ class TDaub:
             A list of the top `run_to_completion` models
             selected by the T-Daub algorithm.
         """
+        if isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame):
+            # set the timestamps to the index of the dataframe before casting to ndarray
+            if timestamps is None:
+                timestamps = X.index
+
+            X = X.to_numpy().reshape(-1, 1)
+            y = y.to_numpy().flatten()
+
         # 1. Data quality check
         data_check.quality_check(X)
 
@@ -119,9 +127,6 @@ class TDaub:
 
         # 2. Look-back window computation
         if allocation_size is None:
-            if timestamps is None and isinstance(X, pd.DataFrame):
-                timestamps = X.index
-
             allocation_size = data_check.compute_look_back_window(
                 X, timestamps=timestamps, max_look_back=max_look_back
             )
@@ -154,6 +159,10 @@ class TDaub:
         metric: Callable = smape,
         verbose: bool = True,
     ) -> list[Model]:
+        if isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame):
+            X = X.to_numpy().reshape(-1, 1)
+            y = y.to_numpy().flatten()
+
         if fixed_allocation_cutoff is None:
             fixed_allocation_cutoff = 5 * allocation_size
 
@@ -201,6 +210,7 @@ class TDaub:
 
         ### 2. Allocation acceleration
         # TODO: fix the allocation acceleration
+        # The allocation should be done backwards; this should fix this part
         l = L - allocation_size * num_fix_runs
         last_allocation_size = num_fix_runs * allocation_size
 
@@ -283,6 +293,8 @@ class TDaub:
         list[np.NDArray] : list of size `run_to_completion`
             A list containing the predicted samples.
         """
+        if isinstance(X, pd.DataFrame):
+            X = X.to_numpy().reshape(-1, 1)
 
         preds = [p.predict(X) for p in self.pipelines]
         return preds
@@ -309,6 +321,9 @@ class TDaub:
         list[float]
             A list containing the scores.
         """
+        if isinstance(X, pd.DataFrame):
+            X = X.to_numpy().reshape(-1, 1)
+            y = y.to_numpy().flatten()
 
         results: list[float] = []
         for p in self.pipelines:

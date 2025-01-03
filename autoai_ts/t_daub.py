@@ -40,7 +40,7 @@ class TDaub:
         self,
         X: npt.NDArray,
         y: npt.NDArray,
-        timestamps: npt.NDArray | None = None,
+        timestamps: pd.DatetimeIndex | None = None,
         max_look_back: int | None = None,
         allocation_size: int | None = None,
         geo_increment_size: float = 2,
@@ -128,7 +128,7 @@ class TDaub:
         # 2. Look-back window computation
         if allocation_size is None:
             allocation_size = data_check.compute_look_back_window(
-                X, timestamps=timestamps, max_look_back=max_look_back
+                X, y, timestamps=timestamps, max_look_back=max_look_back
             )
 
         if verbose:

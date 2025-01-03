@@ -1,3 +1,4 @@
+from sklearn.linear_model import LinearRegression  # TODO: replace with numpy polyfit
 import pandas as pd
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +13,7 @@ def train_test_split(
     X: npt.NDArray,
     y: npt.NDArray,
     test_size: float = 0.2,
-) -> list[npt.NDArray]:
+) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
     """
     Split the time series data into a train and a test split.
     The data is not shuffled.
@@ -31,14 +32,14 @@ def train_test_split(
 
     Returns
     -------
-    list[array-like]
+    tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]
         `X_train, X_test, y_train, y_test` splits.
     """
     split_point = len(X) - int(np.ceil(len(X) * test_size))
 
     X_train, X_test = X[:split_point], X[split_point:]
     y_train, y_test = y[:split_point], y[split_point:]
-    return [X_train, X_test, y_train, y_test]
+    return X_train, X_test, y_train, y_test
 
 
 def quality_check(X: npt.NDArray) -> None:
@@ -81,8 +82,9 @@ def negative_value_check(x: npt.NDArray) -> bool:
 
 
 def compute_look_back_window(
-    x: npt.NDArray,
-    timestamps: npt.NDArray | None = None,
+    X: npt.NDArray,
+    y: npt.NDArray,
+    timestamps: pd.DatetimeIndex | None = None,
     max_look_back: int | None = None,
 ) -> int:
     """
@@ -95,6 +97,10 @@ def compute_look_back_window(
     X : array-like of shape (n_samples, n_features)
         Data used to compute the look-back window.
         Value index assessment is performed on these values.
+
+    y : array-like of shape (n_samples, n_targets)
+        Target values.
+        Used for the selection of a window candidate.
 
     timestamps: array-like of shape (n_samples), default None
         Optional timestamps or index of the data.
@@ -109,17 +115,15 @@ def compute_look_back_window(
     int
         The optimal look-back window for X.
     """
-    look_backs: list[int] = []
-
-    ### Timestamps assessment
-    # We may skip this analysis in no timestamps are provided (synthetic datasets, for example)
+    ### timestamps assessment
+    # skip if no timestamps are provided (synthetic dataset)
+    timestamps_candidates: list[int] = []
     if timestamps is not None:
-        timestamps_candidates: list[int] = _timestamp_analysis(timestamps)
-        look_backs = timestamps_candidates
+        timestamps_candidates = _timestamp_analysis(timestamps)
 
     ### value index assessment
     # 1. zero-crossing
-    value_col = x.flatten().copy()
+    value_col = X.flatten().copy()
     value_col = value_col - np.mean(value_col)
 
     # the bit sign is an array of booleans; do a diff (x[i+1] - x[i]) and find indices of true
@@ -127,53 +131,68 @@ def compute_look_back_window(
     zero_crossing_mean = int(np.mean(zero_crossing_idxs))
 
     # 2. spectral analysis
-    spectral_analysis_candidate = _spectral_analysis(value_col)
+    spectral_analysis_candidates: list[int] = [
+        int(_spectral_analysis(value_col[:ts], ts))
+        for ts in timestamps_candidates
+        if ts < len(value_col)
+    ]
 
-    # flatten the list of lists
-    look_backs = look_backs + [zero_crossing_mean, spectral_analysis_candidate]
+    # combine into a single flat list
+    look_backs: list[int] = (
+        timestamps_candidates + [zero_crossing_mean] + spectral_analysis_candidates
+    )
+    return _select_look_back(X, y, look_backs, len(X), max_look_back)
 
-    look_back = _select_look_back(look_backs, len(x), max_look_back)
-    return look_back
 
-
-def _timestamp_analysis(timestamps: npt.NDArray[np.datetime64]) -> list[int]:
+def _timestamp_analysis(
+    timestamps: pd.DatetimeIndex,
+) -> list[int]:
     frequency = pd.infer_freq(timestamps)
 
+    # Frequency strings: https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-period-aliases
     possible_seasonal_periods: list[int]
     if frequency is None:
         possible_seasonal_periods = []
+    elif frequency == "s":
+        possible_seasonal_periods = [60, 3600, 86400, 604800, 2592000, 31557600]
     elif frequency == "min":
-        possible_seasonal_periods = [1, 60]
+        possible_seasonal_periods = [1, 60, 1440, 10080, 43200, 525960]
     elif frequency == "h":
-        possible_seasonal_periods = [1, 60, 3600]
+        possible_seasonal_periods = [1, 24, 168, 720, 8766]
     elif frequency == "D":
-        possible_seasonal_periods = [1, 24, 1440, 86400]
+        possible_seasonal_periods = [1, 7, 30, 365]
     elif frequency == "W":
-        possible_seasonal_periods = [1, 7, 168, 10080, 604800]
+        possible_seasonal_periods = [1, 4, 52]
     elif frequency[0] == "M":  # MS or MY (month start or month end)
-        possible_seasonal_periods = [1, 4, 30, 720, 43200, 2592000]
+        possible_seasonal_periods = [1, 12]
     elif frequency[0] == "Y":  # YS or YE (year start / year end)
-        possible_seasonal_periods = [1, 12, 52, 365, 8766, 525960, 31557600]
+        possible_seasonal_periods = [1]
 
     return possible_seasonal_periods
 
 
-def _spectral_analysis(values: npt.NDArray) -> int:
+def _spectral_analysis(values_window: npt.NDArray, ts_window: int) -> float:
     # transform to the frequency domain
-    fft = np.fft.fft(values)
-    # find the peak in this domain
+    # TODO: implement periodigram analysis
+    fft = np.fft.fft(values_window)
     peak = int(np.argmax(fft))
+    # peak = np.argmax(fft).item()
+    # fft_freq = np.fft.fftfreq(ts_window)
     return peak
 
 
 def _select_look_back(
-    look_backs: list[int], len_x: int, max_look_back: int | None = None
+    X: npt.NDArray,
+    y: npt.NDArray,
+    look_backs: list[int],
+    len_X: int,
+    max_look_back: int | None = None,
 ) -> int:
     look_backs = [
         lb
         for lb in look_backs
         # discard values longer than the dataset
-        if lb <= len_x
+        if lb <= len_X
         # we discard 0 and 1 values
         and lb > 1
         # if max_look_back is not None, we check the condition
@@ -182,9 +201,15 @@ def _select_look_back(
 
     look_back: int
     if len(look_backs) > 1:
-        # influence vector: how can to implement this?
-        # for now, we use the minimum value
-        look_back = int(np.min(look_backs))
+        # TODO: implement influence score
+        # test the different split with a polyfit function and measure accuracy
+        scores: list[float] = []
+        for lb in look_backs:
+            reg = LinearRegression().fit(X[-lb:], y[-lb:])
+            scores.append(reg.score(X[-lb:], y[-lb:]))
+
+        max_score = np.argmax(scores).item()
+        look_back = look_backs[max_score]
     elif len(look_backs) == 1:
         look_back = look_backs[0]
     else:

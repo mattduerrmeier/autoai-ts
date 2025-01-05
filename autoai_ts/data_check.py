@@ -219,7 +219,6 @@ def _select_look_back(
 
             scores.append(r2_score(y_lb, reg(X_lb)))
 
-        print(scores)
         max_score = np.argmax(scores).item()
         look_back = look_backs[max_score]
     elif len(look_backs) == 1:

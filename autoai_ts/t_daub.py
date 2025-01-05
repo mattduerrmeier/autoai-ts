@@ -1,12 +1,11 @@
-from sklearn.linear_model import LinearRegression  # TODO: replace with numpy polyfit
-import numpy as np
-import pandas as pd
 from autoai_ts import data_check
 from autoai_ts.zero_model import ZeroModel
 from autoai_ts.metrics import smape
 from autoai_ts.model import Model
-from typing import Callable
+import pandas as pd
+import numpy as np
 import numpy.typing as npt
+from typing import Callable
 
 
 class TDaub:
@@ -28,7 +27,7 @@ class TDaub:
             these pipelines will be deactivated if the dataset contains negative values.
 
         use_zm : bool, default True
-            If True, adds the Zero model to the list of pipelines
+            If True, adds the Zero Model to the list of pipelines.
         """
         self.pipelines = pipelines
         self.positive_idx = positive_idx
@@ -43,7 +42,7 @@ class TDaub:
         timestamps: pd.DatetimeIndex | None = None,
         max_look_back: int | None = None,
         allocation_size: int | None = None,
-        geo_increment_size: float = 2.0,
+        geo_increment_size: float = 0.5,
         fixed_allocation_cutoff: int | None = None,
         run_to_completion: int = 3,
         test_size: float = 0.2,
@@ -51,11 +50,13 @@ class TDaub:
         verbose: bool = True,
     ) -> list[Model]:
         """
-        Performs AutoAI-TS.
+        Performs AutoAI-TS model selection.
         Verifies the integrity of the data, deactivate some pipelines
         on negative values, And compute the look-back window.
         Then, execute the T-Daub algorithm on the list of pipelines.
         Returns the top `run_to_completion` pipelines.
+
+        Note that only the top pipelines are preserved after T-Daub.
 
         Parameters
         ----------
@@ -79,7 +80,7 @@ class TDaub:
             Slice of data to use during the fixed allocation.
             If None, the look-back window will be computed automatically.
 
-        geo_increment_size : float, default 2
+        geo_increment_size : float, default 0.5
             Size of the geo-increment to use during the allocation acceleration.
 
         fixed_allocation_cutoff : int, default None
@@ -165,7 +166,7 @@ class TDaub:
         X: npt.NDArray,
         y: npt.NDArray,
         allocation_size: int = 8,
-        geo_increment_size: float = 2.0,
+        geo_increment_size: float = 0.5,
         fixed_allocation_cutoff: int | None = None,
         run_to_completion: int = 3,
         test_size: float = 0.2,
@@ -202,19 +203,22 @@ class TDaub:
                 )
                 y_pred = p.predict(X_test)
                 score = metric(y_test, y_pred)
-                pipeline_scores[p_idx].append(float(score))
+                pipeline_scores[p_idx].append(score)
 
         regression_scores: dict[int, float] = {
             p_idx: 0.0 for p_idx, _ in enumerate(self.pipelines)
         }
 
         for p_idx, p in enumerate(self.pipelines):
+            # fit a linear regression on the scores
             y_score = pipeline_scores[p_idx]
-            X_score = np.arange(0, len(y_score)).reshape(-1, 1)
+            X_score = np.arange(0, len(y_score))
+            reg = np.poly1d(np.polyfit(X_score, y_score, 1))
 
-            reg = LinearRegression().fit(X_score, y_score)
-            future_pipeline_score = np.array([X_score[-1] + 1])  # how to make this L?
-            score_pred = reg.predict(future_pipeline_score)
+            future_pipeline_score = np.array(
+                [X_score[-1] + 1]
+            )  # TODO: how to make this L?
+            score_pred = reg(future_pipeline_score)
             regression_scores[p_idx] = score_pred.item()
 
         # sort the regression score based on future best score
@@ -223,38 +227,40 @@ class TDaub:
         )
 
         ### 2. Allocation acceleration
-        # TODO: fix the allocation acceleration
-        # The allocation should be done backwards; this should fix this part
+        if verbose:
+            print("--------------------------")
+
         l = L - allocation_size * num_fix_runs
         last_allocation_size = num_fix_runs * allocation_size
 
         next_allocation = (
-            int(last_allocation_size * geo_increment_size * allocation_size ** (-1))
+            int(last_allocation_size * geo_increment_size * (1 / allocation_size))
             * allocation_size
         )
         l = l + next_allocation
         while l < L:
             if verbose:
-                print(f"Accel allocation: [{l}|{L}]")
+                print(f"Accel allocation: [{L - l}|{L}]")
 
             top_p_idx = next(iter(regression_scores))
             p = self.pipelines[top_p_idx]
             p.fit(
-                X_train[l + 1 : L],
-                y_train[l + 1 : L],
+                X_train[L - l : L],
+                y_train[L - l : L],
             )
 
             y_pred = p.predict(X_test)
             score = metric(y_test, y_pred)
             pipeline_scores[top_p_idx].append(score)
 
+            # fit a linear regression with the new score
             y_score = pipeline_scores[top_p_idx]
-            X_score = np.arange(0, len(y_score)).reshape(-1, 1)
-            reg = LinearRegression().fit(X_score, y_score)
-            future_pipeline_score = np.array([[10]])  # how to make this L?
-            score_preds = reg.predict(future_pipeline_score)
+            X_score = np.arange(0, len(y_score))
+            reg = np.poly1d(np.polyfit(X_score, y_score, 1))
 
-            regression_scores[top_p_idx] = score_preds
+            future_pipeline_score = np.array([10])  # TODO: how to make this L?
+            score_pred = reg(future_pipeline_score)
+            regression_scores[top_p_idx] = score_pred.item()
 
             # re-rank based on new score
             regression_scores = dict(
@@ -262,7 +268,7 @@ class TDaub:
             )
 
             next_allocation = (
-                int(last_allocation_size * geo_increment_size * allocation_size ** (-1))
+                int(last_allocation_size * geo_increment_size * (1 / allocation_size))
                 * allocation_size
             )
             l = l + next_allocation

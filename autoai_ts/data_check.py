@@ -1,4 +1,3 @@
-from sklearn.linear_model import LinearRegression  # TODO: replace with numpy polyfit
 import pandas as pd
 import numpy as np
 import numpy.typing as npt
@@ -83,7 +82,6 @@ def negative_value_check(x: npt.NDArray) -> bool:
 
 def compute_look_back_window(
     X: npt.NDArray,
-    y: npt.NDArray,
     timestamps: pd.DatetimeIndex | None = None,
     max_look_back: int | None = None,
     verbose: bool = True,
@@ -141,8 +139,9 @@ def compute_look_back_window(
 
     # combine into a single list
     look_backs: list[int] = [zero_crossing_mean] + spectral_analysis_candidates
+
     return _select_look_back(
-        X, y, look_backs, len(X), max_look_back=max_look_back, verbose=verbose
+        X, look_backs, len(X), max_look_back=max_look_back, verbose=verbose
     )
 
 
@@ -184,7 +183,6 @@ def _spectral_analysis(values_window: npt.NDArray, period: int) -> float:
 
 def _select_look_back(
     X: npt.NDArray,
-    y: npt.NDArray,
     look_backs: list[int],
     len_X: int,
     max_look_back: int | None = None,
@@ -205,12 +203,23 @@ def _select_look_back(
 
     look_back: int
     if len(look_backs) > 1:
-        # test the different split with a polyfit function and measure accuracy
+        # test the different look-backs with a polyfit function and measure R^2
         scores: list[float] = []
         for lb in look_backs:
-            reg = LinearRegression().fit(X[-lb:], y[-lb:])
-            scores.append(reg.score(X[-lb:], y[-lb:]))
+            X_lb = np.arange(0, lb)
+            y_lb = X[-lb:].flatten()
 
+            reg = np.poly1d(np.polyfit(X_lb, y_lb, 1))
+
+            def r2_score(y, y_pred):
+                return (
+                    1
+                    - (np.sum((y - y_pred) ** 2) / np.sum((y - np.mean(y)) ** 2)).item()
+                )
+
+            scores.append(r2_score(y_lb, reg(X_lb)))
+
+        print(scores)
         max_score = np.argmax(scores).item()
         look_back = look_backs[max_score]
     elif len(look_backs) == 1:

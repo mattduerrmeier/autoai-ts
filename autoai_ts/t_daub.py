@@ -70,11 +70,19 @@ class TDaub:
             Used for the automatic look-back window computation.
             If X is a pandas DataFrame, this value is inferred automatically.
 
-        allocation_size : int, default 8
+        max_look_back : int, default None
+            Optional maximum size for the look-back windows.
+            Used for the automatic look-back window computation.
+            If set, only `lb_candidates <= max_look_back` will be kept.
+
+        allocation_size : int, default None
             Slice of data to use during the fixed allocation.
+            If None, the look-back window will be computed automatically.
 
         geo_increment_size : float, default 2
             Size of the geo-increment to use during the allocation acceleration.
+
+        fixed_allocation_cutoff : int, default None
 
         run_to_completion : int, default 3
             Number of models to select from the list of top performers
@@ -129,7 +137,6 @@ class TDaub:
         if allocation_size is None:
             allocation_size = data_check.compute_look_back_window(
                 X,
-                y,
                 timestamps=timestamps,
                 max_look_back=max_look_back,
                 verbose=verbose,

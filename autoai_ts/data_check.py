@@ -86,6 +86,7 @@ def compute_look_back_window(
     y: npt.NDArray,
     timestamps: pd.DatetimeIndex | None = None,
     max_look_back: int | None = None,
+    verbose: bool = True,
 ) -> int:
     """
     Computes the look back window length for the input dataset.
@@ -110,16 +111,19 @@ def compute_look_back_window(
         Maximum value for the look-back window.
         Used during the look-back candidate selection.
 
+    verbose: bool, default True
+        if True, prints information during look-back window computation.
+
     Returns
     -------
     int
         The optimal look-back window for X.
     """
     ### timestamps assessment
-    # skip if no timestamps are provided (synthetic dataset)
-    timestamps_candidates: list[int] = []
+    # skipped if no timestamps are provided (synthetic dataset)
+    seasonal_candidates: list[int] = []
     if timestamps is not None:
-        timestamps_candidates = _timestamp_analysis(timestamps)
+        seasonal_candidates = _timestamp_analysis(timestamps)
 
     ### value index assessment
     # 1. zero-crossing
@@ -130,18 +134,16 @@ def compute_look_back_window(
     zero_crossing_idxs = np.nonzero(np.diff(np.signbit(value_col)))[0]
     zero_crossing_mean = int(np.mean(zero_crossing_idxs))
 
-    # 2. spectral analysis
+    # 2. spectral analysis (skipped if no timestamps are provided)
     spectral_analysis_candidates: list[int] = [
-        int(_spectral_analysis(value_col[:ts], ts))
-        for ts in timestamps_candidates
-        if ts < len(value_col)
+        int(_spectral_analysis(value_col, period)) for period in seasonal_candidates
     ]
 
-    # combine into a single flat list
-    look_backs: list[int] = (
-        timestamps_candidates + [zero_crossing_mean] + spectral_analysis_candidates
+    # combine into a single list
+    look_backs: list[int] = [zero_crossing_mean] + spectral_analysis_candidates
+    return _select_look_back(
+        X, y, look_backs, len(X), max_look_back=max_look_back, verbose=verbose
     )
-    return _select_look_back(X, y, look_backs, len(X), max_look_back)
 
 
 def _timestamp_analysis(
@@ -149,7 +151,7 @@ def _timestamp_analysis(
 ) -> list[int]:
     frequency = pd.infer_freq(timestamps)
 
-    # Frequency strings: https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-period-aliases
+    # frequency strings: https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-period-aliases
     possible_seasonal_periods: list[int]
     if frequency is None:
         possible_seasonal_periods = []
@@ -171,14 +173,13 @@ def _timestamp_analysis(
     return possible_seasonal_periods
 
 
-def _spectral_analysis(values_window: npt.NDArray, ts_window: int) -> float:
+def _spectral_analysis(values_window: npt.NDArray, period: int) -> float:
     # transform to the frequency domain
-    # TODO: implement periodigram analysis
-    fft = np.fft.fft(values_window)
-    peak = int(np.argmax(fft))
-    # peak = np.argmax(fft).item()
-    # fft_freq = np.fft.fftfreq(ts_window)
-    return peak
+    fft = np.fft.rfft(values_window)
+    fft_freq = np.fft.rfftfreq(len(values_window), d=1 / period)
+
+    peak_idx = np.argmax(fft)
+    return 1 / fft_freq[peak_idx].item()
 
 
 def _select_look_back(
@@ -187,6 +188,7 @@ def _select_look_back(
     look_backs: list[int],
     len_X: int,
     max_look_back: int | None = None,
+    verbose: bool = True,
 ) -> int:
     look_backs = [
         lb
@@ -198,10 +200,11 @@ def _select_look_back(
         # if max_look_back is not None, we check the condition
         and (max_look_back is None or lb <= max_look_back)
     ]
+    if verbose:
+        print(f"Look-back candidates: {look_backs}")
 
     look_back: int
     if len(look_backs) > 1:
-        # TODO: implement influence score
         # test the different split with a polyfit function and measure accuracy
         scores: list[float] = []
         for lb in look_backs:

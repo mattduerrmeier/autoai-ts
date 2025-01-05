@@ -43,7 +43,7 @@ class TDaub:
         timestamps: pd.DatetimeIndex | None = None,
         max_look_back: int | None = None,
         allocation_size: int | None = None,
-        geo_increment_size: float = 2,
+        geo_increment_size: float = 2.0,
         fixed_allocation_cutoff: int | None = None,
         run_to_completion: int = 3,
         test_size: float = 0.2,
@@ -128,11 +128,17 @@ class TDaub:
         # 2. Look-back window computation
         if allocation_size is None:
             allocation_size = data_check.compute_look_back_window(
-                X, y, timestamps=timestamps, max_look_back=max_look_back
+                X,
+                y,
+                timestamps=timestamps,
+                max_look_back=max_look_back,
+                verbose=verbose,
             )
 
         if verbose:
-            print(f"Look back size: {allocation_size}; Dataset length: {len(X)}")
+            print(
+                f"Look-back window selected: {allocation_size}; Dataset length: {len(X)}"
+            )
 
         # 3. T-Daub model selection
         return self.t_daub(
@@ -152,13 +158,14 @@ class TDaub:
         X: npt.NDArray,
         y: npt.NDArray,
         allocation_size: int = 8,
-        geo_increment_size: float = 2,
+        geo_increment_size: float = 2.0,
         fixed_allocation_cutoff: int | None = None,
         run_to_completion: int = 3,
         test_size: float = 0.2,
         metric: Callable = smape,
         verbose: bool = True,
     ) -> list[Model]:
+        # TODO: document T-Daub
         if isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame):
             X = X.to_numpy().reshape(-1, 1)
             y = y.to_numpy().flatten()

@@ -76,6 +76,11 @@ def get_cosine_function(freq: float = 0.01, time: int = 2000) -> npt.NDArray:
     return amp * np.sin(2 * np.pi * freq * t + np.pi / 2)
 
 
+def get_walmart_dataset() -> pd.DataFrame:
+    df = pd.read_csv("walmart.csv", index_col="Date")
+    return df
+
+
 def to_supervised[T: (npt.NDArray, pd.DataFrame)](X: T) -> tuple[T, T]:
     """
     Transform a univariate time series into a supervised problem.

@@ -124,7 +124,9 @@ class AutoAITS:
             A list of the top `run_to_completion` models selected by
             the T-Daub algorithm.
         """
-        if isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame):
+        if isinstance(X, pd.DataFrame) and (
+            isinstance(y, pd.Series) or isinstance(y, pd.DataFrame)
+        ):
             # set the timestamps to the index of the DataFrame before casting to ndarray
             if timestamps is None:
                 timestamps = X.index
@@ -461,7 +463,9 @@ class AutoAITS:
         list[float]
             A list containing the scores.
         """
-        if isinstance(X, pd.DataFrame):
+        if isinstance(X, pd.DataFrame) and (
+            isinstance(y, pd.Series) or isinstance(y, pd.DataFrame)
+        ):
             X = X.to_numpy()
             y = y.to_numpy().flatten()
 

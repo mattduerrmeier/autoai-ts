@@ -16,6 +16,9 @@ class TDaub:
         use_zm: bool = True,
     ) -> None:
         """
+        AutoAI-TS model selection framework.
+        Initialize AutoAI-TS with a set of pipelines.
+
         Parameters
         ----------
         pipelines : list
@@ -50,13 +53,23 @@ class TDaub:
         verbose: bool = True,
     ) -> list[Model]:
         """
-        Performs AutoAI-TS model selection.
-        Verifies the integrity of the data, deactivate some pipelines
-        on negative values, And compute the look-back window.
+        Execute AutoAI-TS model selection.
+        Verifies the integrity of the data, check for negative values
+        and deactivate pipelines that only work on positives values,
+        and compute the look-back window.
         Then, execute the T-Daub algorithm on the list of pipelines.
-        Returns the top `run_to_completion` pipelines.
+        T-Daub consists of 2 parts:
+            1. Fixed allocation: test all pipelines on
+                fixed size data allocation.
+            2. Allocation acceleration: test only the top pipeline on
+                data allocation increasing geometrically.
 
-        Note that only the top pipelines are preserved after T-Daub.
+        Train and score the top `run_to_completion` pipelines on the
+        full dataset.
+        Sort according the performance, and returns the top pipelines.
+
+        Note that after T-Daub, the list of pipelines is updated
+        with the top pipelines only.
 
         Parameters
         ----------
@@ -69,11 +82,12 @@ class TDaub:
         timestamps : array-like of shape (n_samples), default None
             Optional timestamps or index of the data.
             Used for the automatic look-back window computation.
-            If X is a pandas DataFrame, this value is inferred automatically.
+            If X is a pandas DataFrame, this value is automatically
+            set to `df.index`.
 
         max_look_back : int, default None
-            Optional maximum size for the look-back windows.
-            Used for the automatic look-back window computation.
+            Maximum size of the look-back window.
+            Used during the automatic look-back window computation.
             If set, only `lb_candidates <= max_look_back` will be kept.
 
         allocation_size : int, default None
@@ -81,32 +95,37 @@ class TDaub:
             If None, the look-back window will be computed automatically.
 
         geo_increment_size : float, default 0.5
-            Size of the geo-increment to use during the allocation acceleration.
+            Size of the geo-increment to use during the allocation
+            acceleration.
+            Smaller values will increase the number of iterations.
 
         fixed_allocation_cutoff : int, default None
+            Cutoff point where the fixed allocation must stop.
+            Must be smaller than `len(X_train)`.
+            If None, set to 5 times the allocation_size.
 
         run_to_completion : int, default 3
             Number of models to select from the list of top performers
             at the end of T-Daub.
 
         test_size : float, default 0.2
-            Proportion of the data to use in the validation set.
+            Proportion of the data to use as validation set.
             Must be between 0.0 and 1.0.
 
         metric : Callable, default smape
             Function used to compute the score on the validation set.
 
         verbose : bool, default True
-            If True, prints information during model selection.
+            If True, prints information during execution.
 
         Returns
         -------
         list[Model]
-            A list of the top `run_to_completion` models
-            selected by the T-Daub algorithm.
+            A list of the top `run_to_completion` models selected by
+            the T-Daub algorithm.
         """
         if isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame):
-            # set the timestamps to the index of the dataframe before casting to ndarray
+            # set the timestamps to the index of the DataFrame before casting to ndarray
             if timestamps is None:
                 timestamps = X.index
 
@@ -173,7 +192,63 @@ class TDaub:
         metric: Callable = smape,
         verbose: bool = True,
     ) -> list[Model]:
-        # TODO: document T-Daub
+        """
+        Execute the T-Daub algorithm.
+        T-Daub consists of 2 parts:
+            1. Fixed allocation: test all pipelines on
+                fixed size data allocation.
+            2. Allocation acceleration: test only the top pipeline on
+                data allocation increasing geometrically.
+
+        Train and score the top `run_to_completion` pipelines on the
+        full dataset.
+        Sort according the performance, and returns the top pipelines.
+
+        Note that after T-Daub, the list of pipelines is updated
+        with the top pipelines only.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data.
+
+        y : array-like of shape (n_samples, n_targets)
+            Target values.
+
+        allocation_size : int, default 8
+            Slice of data to use during the fixed allocation.
+            Default is 8 as recommended in the paper.
+
+        geo_increment_size : float, default 0.5
+            Size of the geo-increment to use during the allocation
+            acceleration.
+            Smaller values will increase the number of iterations.
+
+        fixed_allocation_cutoff : int, default None
+            Cutoff point where the fixed allocation must stop.
+            Must be smaller than `len(X_train)`.
+            If None, set to 5 times the allocation_size.
+
+        run_to_completion : int, default 3
+            Number of models to select from the list of top performers
+            at the end of T-Daub.
+
+        test_size : float, default 0.2
+            Proportion of the data to use as validation set.
+            Must be between 0.0 and 1.0.
+
+        metric : Callable, default smape
+            Function used to compute the score on the validation set.
+
+        verbose : bool, default True
+            If True, prints information during execution.
+
+        Returns
+        -------
+        list[Model]
+            A list of the top `run_to_completion` models selected by
+            the T-Daub algorithm.
+        """
         if isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame):
             X = X.to_numpy()
             y = y.to_numpy().flatten()
@@ -202,7 +277,7 @@ class TDaub:
         }
 
         for i in range(num_fix_runs):
-            # to avoid indexing out of range of the dataset
+            # to avoid indexing out of the range of X_train
             alloc = min(allocation_size * (i + 1), L)
             if verbose:
                 print(f"Fixed allocation: [{L - alloc}|{L}]")
@@ -225,9 +300,9 @@ class TDaub:
         }
 
         for p_idx, p in enumerate(self.pipelines):
+            # we can't fit on 1 point: use the pipeline_scores from the single run
+            # similarly, if we already trained on L, we can use this score instead
             if num_fix_runs == 1 or last_allocation_size == L:
-                # we can't fit on 1 point: use the pipeline_scores from the single run
-                # similarly, if we already trained on L, we can use this score instead
                 if verbose and p_idx == 0:  # show this message only once
                     if num_fix_runs == 1:
                         print("Not enough data points -> skipping regression!")
@@ -236,7 +311,7 @@ class TDaub:
 
                 regression_scores[p_idx] = pipeline_scores[p_idx][-1]
             else:
-                # fit a linear regression on the scores
+                # fit a linear regression on the scores and predict for L
                 y_score = pipeline_scores[p_idx]
                 X_score = list_allocation_sizes
                 reg = np.poly1d(np.polyfit(X_score, y_score, 1))
@@ -254,11 +329,10 @@ class TDaub:
             print("--------------------------")
 
         # start the allocation where we stopped in phase 1
-        # not exactly like the algorithm, but more correct: paper version does not always work!
+        # not exactly like the algorithm, but more correct: original algorithm does not always work!
         l_accel = last_allocation_size
 
-        # the next_allocation can be 0 if the last allocation_size is smaller than the allocation_size
-        # in this case, use 4 instead (an arbitrary but reasonable increase)
+        # the next_allocation can be 0: use 4 instead (arbitrary but reasonable increase)
         next_allocation = max(
             4,
             (
@@ -268,7 +342,8 @@ class TDaub:
         )
         l_accel = l_accel + next_allocation
 
-        # since we switch top pipeline in the allocation accleration, every pipeline needs its own list of allocation_size
+        # since we switch between the top pipeline in the allocation acceleration,
+        # every pipeline needs its own list of allocation_size
         pipeline_allocation_sizes: dict[int, list[int]] = {
             p_idx: list_allocation_sizes.copy()
             for p_idx, _ in enumerate(self.pipelines)
@@ -290,7 +365,7 @@ class TDaub:
             pipeline_scores[top_p_idx].append(score)
             pipeline_allocation_sizes[top_p_idx].append(l_accel)
 
-            # fit a linear regression with the new score
+            # fit a linear regression with the new score and predict for L
             y_score = pipeline_scores[top_p_idx]
             X_score = pipeline_allocation_sizes[top_p_idx]
             reg = np.poly1d(np.polyfit(X_score, y_score, 1))
@@ -298,7 +373,7 @@ class TDaub:
             score_pred = reg(L)
             regression_scores[top_p_idx] = score_pred.item()
 
-            # re-rank based on new score
+            # re-rank based on the new predicted score
             regression_scores = dict(
                 sorted(regression_scores.items(), key=lambda x: x[1], reverse=False)
             )
@@ -316,12 +391,13 @@ class TDaub:
             )
             l_accel = l_accel + next_allocation
 
-        ### 3. T-Daub scoring: select the top n pipelines (n = run_to_completion)
+        ### 3. T-Daub scoring: select the top run_to_completion pipelines
         top_pipelines: list[Model] = [
             self.pipelines[p_idx]
             for p_idx in list(regression_scores)[:run_to_completion]
         ]
 
+        # train and the full dataset, score and rank the pipelines
         top_scores: list[float] = []
         for top_p in top_pipelines:
             top_p.fit(X_train, y_train)
@@ -353,8 +429,9 @@ class TDaub:
 
         Returns
         -------
-        list[np.NDArray] : list of size `run_to_completion`
+        list[np.NDArray]
             A list containing the predicted samples.
+            The list is of size `run_to_completion * len(X)`.
         """
         if isinstance(X, pd.DataFrame):
             X = X.to_numpy()

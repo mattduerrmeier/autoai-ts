@@ -195,7 +195,7 @@ class TDaub:
         # push the num_fix_runs to the next value, such that we train on to the full dataset
         # example: 30 / 20 = 1.5 -> 2, such that we train on {20, 30}
         num_fix_runs = int(np.ceil(fixed_allocation_cutoff / allocation_size))
-        last_allocation_size = 0
+        list_allocation_sizes: list[int] = []
 
         pipeline_scores: dict[int, list[float]] = {
             p_idx: [] for p_idx, _ in enumerate(self.pipelines)
@@ -216,7 +216,9 @@ class TDaub:
                 score = metric(y_test, y_pred)
                 pipeline_scores[p_idx].append(score)
 
-            last_allocation_size = alloc
+            list_allocation_sizes.append(alloc)
+
+        last_allocation_size = list_allocation_sizes[-1]
 
         regression_scores: dict[int, float] = {
             p_idx: 0.0 for p_idx, _ in enumerate(self.pipelines)
@@ -228,21 +230,18 @@ class TDaub:
                 # similarly, if we already trained on L, we can use this score instead
                 if verbose and p_idx == 0:  # show this message only once
                     if num_fix_runs == 1:
-                        print("Not enough data points -> skipping regression...")
+                        print("Not enough data points -> skipping regression!")
                     else:
-                        print("Already trained on L   -> skipping regression...")
+                        print("Already trained on L -> skipping regression!")
 
                 regression_scores[p_idx] = pipeline_scores[p_idx][-1]
             else:
                 # fit a linear regression on the scores
                 y_score = pipeline_scores[p_idx]
-                X_score = np.arange(0, len(y_score))
+                X_score = list_allocation_sizes
                 reg = np.poly1d(np.polyfit(X_score, y_score, 1))
 
-                future_pipeline_score = np.array(
-                    [X_score[-1] + 1]
-                )  # TODO: how to make this L?
-                score_pred = reg(future_pipeline_score)
+                score_pred = reg(L)
                 regression_scores[p_idx] = score_pred.item()
 
         # sort the regression score based on future best score
@@ -269,6 +268,12 @@ class TDaub:
         )
         l_accel = l_accel + next_allocation
 
+        # since we switch top pipeline in the allocation accleration, every pipeline needs its own list of allocation_size
+        pipeline_allocation_sizes: dict[int, list[int]] = {
+            p_idx: list_allocation_sizes.copy()
+            for p_idx, _ in enumerate(self.pipelines)
+        }
+
         while l_accel < L:
             if verbose:
                 print(f"Accel allocation: [{L-l_accel}|{L}]")
@@ -283,16 +288,14 @@ class TDaub:
             y_pred = p.predict(X_test)
             score = metric(y_test, y_pred)
             pipeline_scores[top_p_idx].append(score)
+            pipeline_allocation_sizes[top_p_idx].append(l_accel)
 
             # fit a linear regression with the new score
             y_score = pipeline_scores[top_p_idx]
-            X_score = np.arange(0, len(y_score))
+            X_score = pipeline_allocation_sizes[top_p_idx]
             reg = np.poly1d(np.polyfit(X_score, y_score, 1))
 
-            future_pipeline_score = np.array(
-                X_score[-1] + 1
-            )  # TODO: how to make this L?
-            score_pred = reg(future_pipeline_score)
+            score_pred = reg(L)
             regression_scores[top_p_idx] = score_pred.item()
 
             # re-rank based on new score

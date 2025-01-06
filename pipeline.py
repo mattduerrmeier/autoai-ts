@@ -33,8 +33,8 @@ def create_pipelines(random_state: int = 42) -> list[Model]:
     # AutoEnsembler: use XGBoost instead
     xgb = XGBRegressor(random_state=random_state)
 
-    # model_list = [arima, hw_add, hw_mult, lr, svr, rfr, xgb]
-    model_list = [lr, svr, rfr, xgb]
+    model_list = [arima, hw_add, hw_mult, lr, svr, rfr, xgb]
+    # model_list = [lr, svr, rfr, xgb]
 
     # Transformer should be combined with other models => which one?
     # log_transformer = FunctionTransformer(np.log, validate=True)

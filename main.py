@@ -4,7 +4,7 @@ from pipeline import create_pipelines
 import dataset
 
 ### Passenger flights
-df = dataset.get_ozone_dataset()
+df = dataset.get_flights_dataset()
 X, y = dataset.to_supervised(df)
 
 # train-test split 80/20; not shuffled because time series

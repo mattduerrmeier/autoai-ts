@@ -110,7 +110,7 @@ class TDaub:
             if timestamps is None:
                 timestamps = X.index
 
-            X = X.to_numpy().reshape(-1, 1)
+            X = X.to_numpy()
             y = y.to_numpy().flatten()
 
         # 1. Data quality check
@@ -175,51 +175,67 @@ class TDaub:
     ) -> list[Model]:
         # TODO: document T-Daub
         if isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame):
-            X = X.to_numpy().reshape(-1, 1)
+            X = X.to_numpy()
             y = y.to_numpy().flatten()
-
-        if fixed_allocation_cutoff is None:
-            fixed_allocation_cutoff = 5 * allocation_size
 
         X_train, X_test, y_train, y_test = data_check.train_test_split(
             X, y, test_size=test_size
         )
         L = len(X_train)
 
-        ### 1. Fixed allocation: run on fixed size data
-        num_fix_runs = int(fixed_allocation_cutoff / allocation_size)
+        if fixed_allocation_cutoff is None:
+            # the cutoff must be smaller or equal to the dataset
+            fixed_allocation_cutoff = (
+                5 * allocation_size if 5 * allocation_size < L else L
+            )
+            if verbose:
+                print("Allocation cutoff: ", fixed_allocation_cutoff)
+
+        ### 1. Fixed allocation
+        num_fix_runs = int(np.ceil(fixed_allocation_cutoff / allocation_size).item())
+        last_allocation_size = 0
+
         pipeline_scores: dict[int, list[float]] = {
             p_idx: [] for p_idx, _ in enumerate(self.pipelines)
         }
 
         for i in range(num_fix_runs):
+            start_idx = (
+                L - allocation_size * (i + 1) if allocation_size * (i + 1) < L else 0
+            )
             if verbose:
-                print(f"Fixed allocation: [{L - allocation_size*(i+1)}|{L}]")
+                print(f"Fixed allocation: [{start_idx}|{L}]")
 
             for p_idx, p in enumerate(self.pipelines):
                 p.fit(
-                    X_train[L - allocation_size * (i + 1) : L],
-                    y_train[L - allocation_size * (i + 1) : L],
+                    X_train[start_idx:L],
+                    y_train[start_idx:L],
                 )
                 y_pred = p.predict(X_test)
                 score = metric(y_test, y_pred)
                 pipeline_scores[p_idx].append(score)
+
+            last_allocation_size = allocation_size * (i + 1)
 
         regression_scores: dict[int, float] = {
             p_idx: 0.0 for p_idx, _ in enumerate(self.pipelines)
         }
 
         for p_idx, p in enumerate(self.pipelines):
-            # fit a linear regression on the scores
-            y_score = pipeline_scores[p_idx]
-            X_score = np.arange(0, len(y_score))
-            reg = np.poly1d(np.polyfit(X_score, y_score, 1))
+            if num_fix_runs == 1:
+                # we can't fit on 1 point: use the pipeline_scores from the single run
+                regression_scores[p_idx] = pipeline_scores[p_idx][0]
+            else:
+                # fit a linear regression on the scores
+                y_score = pipeline_scores[p_idx]
+                X_score = np.arange(0, len(y_score))
+                reg = np.poly1d(np.polyfit(X_score, y_score, 1))
 
-            future_pipeline_score = np.array(
-                [X_score[-1] + 1]
-            )  # TODO: how to make this L?
-            score_pred = reg(future_pipeline_score)
-            regression_scores[p_idx] = score_pred.item()
+                future_pipeline_score = np.array(
+                    [X_score[-1] + 1]
+                )  # TODO: how to make this L?
+                score_pred = reg(future_pipeline_score)
+                regression_scores[p_idx] = score_pred.item()
 
         # sort the regression score based on future best score
         regression_scores = dict(
@@ -231,7 +247,6 @@ class TDaub:
             print("--------------------------")
 
         l = L - allocation_size * num_fix_runs
-        last_allocation_size = num_fix_runs * allocation_size
 
         next_allocation = (
             int(last_allocation_size * geo_increment_size * (1 / allocation_size))
@@ -258,7 +273,9 @@ class TDaub:
             X_score = np.arange(0, len(y_score))
             reg = np.poly1d(np.polyfit(X_score, y_score, 1))
 
-            future_pipeline_score = np.array([10])  # TODO: how to make this L?
+            future_pipeline_score = np.array(
+                X_score[-1] + 1
+            )  # TODO: how to make this L?
             score_pred = reg(future_pipeline_score)
             regression_scores[top_p_idx] = score_pred.item()
 
@@ -267,13 +284,15 @@ class TDaub:
                 sorted(regression_scores.items(), key=lambda x: x[1], reverse=False)
             )
 
+            # not specified in the algorithm, but this is probably how the geometric increase should behave
+            last_allocation_size = l
             next_allocation = (
                 int(last_allocation_size * geo_increment_size * (1 / allocation_size))
                 * allocation_size
             )
             l = l + next_allocation
 
-        ### 3. T-Daub Scoring: select the top n pipelines (n = run_to_completion)
+        ### 3. T-Daub scoring: select the top n pipelines (n = run_to_completion)
         top_pipelines: list[Model] = [
             self.pipelines[p_idx]
             for p_idx in list(regression_scores)[:run_to_completion]
@@ -314,7 +333,7 @@ class TDaub:
             A list containing the predicted samples.
         """
         if isinstance(X, pd.DataFrame):
-            X = X.to_numpy().reshape(-1, 1)
+            X = X.to_numpy()
 
         preds = [p.predict(X) for p in self.pipelines]
         return preds
@@ -342,7 +361,7 @@ class TDaub:
             A list containing the scores.
         """
         if isinstance(X, pd.DataFrame):
-            X = X.to_numpy().reshape(-1, 1)
+            X = X.to_numpy()
             y = y.to_numpy().flatten()
 
         results: list[float] = []

@@ -66,7 +66,7 @@ def get_bundesplatz_temperature() -> pd.DataFrame:
     df = pd.read_csv("data/bundesplatz-2024.csv", sep=";")
     df["date"] = pd.to_datetime(df["dateObserved"])
     df = df.set_index("date")
-    df = df.drop(columns="dateObserved")
+    df = df.drop(columns=["dateObserved", "relativeHumidity"])
     return df
 
 

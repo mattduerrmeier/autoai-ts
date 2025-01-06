@@ -8,7 +8,7 @@ import numpy.typing as npt
 from typing import Callable
 
 
-class TDaub:
+class AutoAITS:
     def __init__(
         self,
         pipelines: list[Model],

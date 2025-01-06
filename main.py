@@ -1,6 +1,6 @@
-from sklearn.model_selection import train_test_split
-from autoai_ts.t_daub import TDaub
+from autoai_ts import AutoAITS
 from pipeline import create_pipelines
+from sklearn.model_selection import train_test_split
 import dataset
 
 ### Passenger flights
@@ -12,8 +12,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle
 
 pipelines = create_pipelines()
 
-tdaub = TDaub(pipelines, positive_idx=[2])
-tdaub.fit(X_train, y_train)
+model = AutoAITS(pipelines, positive_idx=[2])
+model.fit(X_train, y_train)
 
-scores = tdaub.score(X_test, y_test)
+scores = model.score(X_test, y_test)
 print("Evaluation: ", scores)

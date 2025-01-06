@@ -5,6 +5,10 @@ import dataset
 import pandas as pd
 import numpy as np
 from typing import Callable
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.style.use("ggplot")
 
 
 def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> pd.DataFrame:
@@ -57,10 +61,6 @@ X, y = dataset.to_supervised(X)
 ozone_scores = train_pipelines(X, y, smape)
 
 ### visualize scores
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-plt.style.use("ggplot")
 
 scores = (
     pd.concat(

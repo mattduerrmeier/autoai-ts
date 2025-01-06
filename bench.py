@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from autoai_ts.t_daub import TDaub
+from autoai_ts import AutoAITS
 from pipeline import create_pipelines
 import dataset
 import time
@@ -20,10 +20,10 @@ for i in range(0, 4):
 
     for j in range(10):
         pipelines = create_pipelines(random_state=42 + j)
-        tdaub = TDaub(pipelines)
+        model = AutoAITS(pipelines)
 
         start = time.time()
-        tdaub.fit(X, y, allocation_size=window_length, verbose=False)
+        model.fit(X, y, allocation_size=window_length, verbose=False)
         stop = time.time()
         time_diff = stop - start
         time_diffs.append(time_diff)

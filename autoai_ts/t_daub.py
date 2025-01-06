@@ -192,7 +192,9 @@ class TDaub:
                 print("Allocation cutoff: ", fixed_allocation_cutoff)
 
         ### 1. Fixed allocation
-        num_fix_runs = int(np.ceil(fixed_allocation_cutoff / allocation_size).item())
+        # push the num_fix_runs to the next value, such that we train on to the full dataset
+        # example: 30 / 20 = 1.5 -> 2, such that we train on {20, 30}
+        num_fix_runs = int(np.ceil(fixed_allocation_cutoff / allocation_size))
         last_allocation_size = 0
 
         pipeline_scores: dict[int, list[float]] = {
@@ -200,31 +202,37 @@ class TDaub:
         }
 
         for i in range(num_fix_runs):
-            start_idx = (
-                L - allocation_size * (i + 1) if allocation_size * (i + 1) < L else 0
-            )
+            # to avoid indexing out of range of the dataset
+            alloc = min(allocation_size * (i + 1), L)
             if verbose:
-                print(f"Fixed allocation: [{start_idx}|{L}]")
+                print(f"Fixed allocation: [{L - alloc}|{L}]")
 
             for p_idx, p in enumerate(self.pipelines):
                 p.fit(
-                    X_train[start_idx:L],
-                    y_train[start_idx:L],
+                    X_train[L - alloc : L],
+                    y_train[L - alloc : L],
                 )
                 y_pred = p.predict(X_test)
                 score = metric(y_test, y_pred)
                 pipeline_scores[p_idx].append(score)
 
-            last_allocation_size = allocation_size * (i + 1)
+            last_allocation_size = alloc
 
         regression_scores: dict[int, float] = {
             p_idx: 0.0 for p_idx, _ in enumerate(self.pipelines)
         }
 
         for p_idx, p in enumerate(self.pipelines):
-            if num_fix_runs == 1:
+            if num_fix_runs == 1 or last_allocation_size == L:
                 # we can't fit on 1 point: use the pipeline_scores from the single run
-                regression_scores[p_idx] = pipeline_scores[p_idx][0]
+                # similarly, if we already trained on L, we can use this score instead
+                if verbose and p_idx == 0:  # show this message only once
+                    if num_fix_runs == 1:
+                        print("Not enough data points -> skipping regression...")
+                    else:
+                        print("Already trained on L   -> skipping regression...")
+
+                regression_scores[p_idx] = pipeline_scores[p_idx][-1]
             else:
                 # fit a linear regression on the scores
                 y_score = pipeline_scores[p_idx]
@@ -246,22 +254,30 @@ class TDaub:
         if verbose:
             print("--------------------------")
 
-        l = L - allocation_size * num_fix_runs
+        # start the allocation where we stopped in phase 1
+        # not exactly like the algorithm, but more correct: paper version does not always work!
+        l_accel = last_allocation_size
 
-        next_allocation = (
-            int(last_allocation_size * geo_increment_size * (1 / allocation_size))
-            * allocation_size
+        # the next_allocation can be 0 if the last allocation_size is smaller than the allocation_size
+        # in this case, use 4 instead (an arbitrary but reasonable increase)
+        next_allocation = max(
+            4,
+            (
+                int(last_allocation_size * geo_increment_size * (1 / allocation_size))
+                * allocation_size
+            ),
         )
-        l = l + next_allocation
-        while l < L:
+        l_accel = l_accel + next_allocation
+
+        while l_accel < L:
             if verbose:
-                print(f"Accel allocation: [{L - l}|{L}]")
+                print(f"Accel allocation: [{L-l_accel}|{L}]")
 
             top_p_idx = next(iter(regression_scores))
             p = self.pipelines[top_p_idx]
             p.fit(
-                X_train[L - l : L],
-                y_train[L - l : L],
+                X_train[L - l_accel : L],
+                y_train[L - l_accel : L],
             )
 
             y_pred = p.predict(X_test)
@@ -284,13 +300,18 @@ class TDaub:
                 sorted(regression_scores.items(), key=lambda x: x[1], reverse=False)
             )
 
-            # not specified in the algorithm, but this is probably how the geometric increase should behave
-            last_allocation_size = l
-            next_allocation = (
-                int(last_allocation_size * geo_increment_size * (1 / allocation_size))
-                * allocation_size
+            next_allocation = max(
+                4,
+                (
+                    int(
+                        last_allocation_size
+                        * geo_increment_size
+                        * (1 / allocation_size)
+                    )
+                    * allocation_size
+                ),
             )
-            l = l + next_allocation
+            l_accel = l_accel + next_allocation
 
         ### 3. T-Daub scoring: select the top n pipelines (n = run_to_completion)
         top_pipelines: list[Model] = [

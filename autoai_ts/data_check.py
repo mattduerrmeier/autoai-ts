@@ -209,7 +209,8 @@ def _select_look_back(
             X_lb = np.arange(0, lb)
             y_lb = X[-lb:].flatten()
 
-            reg = np.poly1d(np.polyfit(X_lb, y_lb, 1))
+            # 2nd order leads to better performance
+            reg = np.poly1d(np.polyfit(X_lb, y_lb, 2))
 
             def r2_score(y, y_pred):
                 return (

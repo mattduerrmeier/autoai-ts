@@ -77,7 +77,7 @@ def get_cosine_function(freq: float = 0.01, time: int = 2000) -> npt.NDArray:
 
 
 def get_walmart_dataset() -> pd.DataFrame:
-    df = pd.read_csv("walmart.csv", index_col="Date")
+    df = pd.read_csv("data/walmart.csv", index_col="Date")
     return df
 
 

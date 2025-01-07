@@ -1,5 +1,8 @@
+from sklearn.linear_model import LinearRegression
+from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
-from pipeline import create_pipelines
 from autoai_ts.metrics import smape
 import dataset
 import pandas as pd
@@ -10,13 +13,23 @@ import seaborn as sns
 
 plt.style.use("ggplot")
 
+def regressor_pipelines(random_state: int = 42):
+    # ML Models
+    lr = LinearRegression()
+    svr = SVR()
+    rfr = RandomForestRegressor(random_state=random_state)
+    # AutoEnsembler: use XGBoost instead
+    xgb = XGBRegressor(random_state=random_state)
+    return [lr, svr, rfr, xgb]
+
 
 def train_pipelines(X: np.ndarray, y: np.ndarray, metric: Callable) -> pd.DataFrame:
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, shuffle=False
     )
 
-    pipelines = create_pipelines()
+    pipelines = regressor_pipelines()
+
     scores: dict[str, float] = {}
 
     for i, p in enumerate(pipelines):

@@ -8,7 +8,9 @@ import numpy.typing as npt
 from autoai_ts.model import Model
 
 
-def create_pipelines(random_state: int = 42) -> list[Model]:
+def create_pipelines(
+    random_state: int = 42, contains_neg_values: bool = False
+) -> list[Model]:
     """
     Initialize the model pipelines used in T-Daub.
     Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
@@ -34,6 +36,9 @@ def create_pipelines(random_state: int = 42) -> list[Model]:
     xgb = XGBRegressor(random_state=random_state)
 
     model_list = [arima, hw_add, hw_mult, lr, svr, rfr, xgb]
+
+    if contains_neg_values:
+        model_list.remove(hw_mult)
 
     return model_list
 

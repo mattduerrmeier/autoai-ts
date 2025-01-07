@@ -13,6 +13,7 @@ import seaborn as sns
 
 plt.style.use("ggplot")
 
+
 def regressor_pipelines(random_state: int = 42):
     # ML Models
     lr = LinearRegression()

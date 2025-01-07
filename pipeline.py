@@ -14,7 +14,7 @@ def create_pipelines(random_state: int = 42) -> list[Model]:
     Pipelines are made of statistical models, machine learning model and Gradient Boosted methods.
     """
     # Stat Models
-    arima = StatsModelWrapper(ARIMA)
+    arima = StatsModelWrapper(ARIMA, **{"order": (1, 0, 1)})
     hw_add = StatsModelWrapper(
         ExponentialSmoothing, **{"seasonal": "add", "seasonal_periods": 4}
     )

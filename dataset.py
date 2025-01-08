@@ -70,15 +70,42 @@ def get_bundesplatz_temperature() -> pd.DataFrame:
     return df
 
 
+def get_walmart_dataset() -> pd.DataFrame:
+    df = pd.read_csv(
+        "data/walmart.csv",
+        parse_dates=["Date"],
+        index_col="Date",
+        date_format="%d-%m-%Y",
+    )
+    return df
+
+
+def get_influenza_cases() -> pd.DataFrame:
+    df = pd.read_csv(
+        "data/influenza-fohp-oblig.csv",
+        parse_dates=["Date"],
+        date_format="%d.%m.%Y",
+        index_col="Date",
+    )
+    return df
+
+
+def get_beijing_pm25() -> pd.DataFrame:
+    df = pd.read_csv("data/beijing-pm25.csv")
+    df["date"] = pd.to_datetime(df[["year", "month", "day", "hour"]])
+    df = df.drop(columns=["year", "month", "day", "hour", "No"])
+    df = df.set_index("date")
+
+    df = df.iloc[24:].ffill()
+    df["cbwd"] = df["cbwd"].astype("category").cat.codes
+
+    return df
+
+
 def get_cosine_function(freq: float = 0.01, time: int = 2000) -> npt.NDArray:
     t = np.arange(0, time)
     amp = np.linspace(0, 1000, t.size)
     return amp * np.sin(2 * np.pi * freq * t + np.pi / 2)
-
-
-def get_walmart_dataset() -> pd.DataFrame:
-    df = pd.read_csv("data/walmart.csv", index_col="Date")
-    return df
 
 
 def to_supervised[T: (npt.NDArray, pd.DataFrame)](X: T) -> tuple[T, T]:

@@ -160,9 +160,9 @@ def _timestamp_analysis(
         possible_seasonal_periods = [1, 60, 1440, 10080, 43200, 525960]
     elif frequency == "h":
         possible_seasonal_periods = [1, 24, 168, 720, 8766]
-    elif frequency == "D":
+    elif frequency[0] == "D":
         possible_seasonal_periods = [1, 7, 30, 365]
-    elif frequency == "W":
+    elif frequency[0] == "W":
         possible_seasonal_periods = [1, 4, 52]
     elif frequency[0] == "M":  # MS or MY (month start or month end)
         possible_seasonal_periods = [1, 12]

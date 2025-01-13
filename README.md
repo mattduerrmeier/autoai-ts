@@ -79,3 +79,7 @@ model.fit(X_train, y_train)
 scores = model.score(X_test, y_test)
 print("Evaluation: ", scores)
 ```
+
+## License
+
+Licensed under the [GNU AGPLv3](LICENSE) license.

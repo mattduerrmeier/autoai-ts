@@ -77,7 +77,7 @@ def negative_value_check(x: npt.NDArray) -> bool:
     bool
         True if the are negative values in the data, false otherwise.
     """
-    return bool((x < 0).any())
+    return bool((x <= 0).any())
 
 
 def compute_look_back_window(

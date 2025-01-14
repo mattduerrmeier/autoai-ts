@@ -2,8 +2,8 @@
 
 An opens-source implementation of the AutoAI-TS model selection framework with minimal dependencies.
 
-AutoAI-TS is a *zero-config* model selection techniques for time series.
-The framework performs data validation, automatic look-back computation, and model selection with the T-Daub algorithm.
+AutoAI-TS is a *zero-config* model selection framework for time series.
+It performs data validation, automatic look-back computation, and model selection with the T-Daub algorithm.
 
 For more details on AutoAI-TS, read the original paper: [AutoAI-TS: AutoAI for Time Series Forecasting](https://dl.acm.org/doi/10.1145/3448016.3457557).
 
